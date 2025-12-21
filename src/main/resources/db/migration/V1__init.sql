@@ -1,0 +1,8 @@
+-- V1 mínima: crea app_users
+CREATE TABLE IF NOT EXISTS app_users (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(120) NOT NULL UNIQUE,
+  profile_picture VARCHAR(255),
+  role VARCHAR(20) NOT NULL
+) ENGINE=InnoDB;

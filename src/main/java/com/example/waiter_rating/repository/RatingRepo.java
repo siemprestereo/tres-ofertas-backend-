@@ -1,0 +1,35 @@
+package com.example.waiter_rating.repository;
+
+import com.example.waiter_rating.model.Rating;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface RatingRepo extends JpaRepository<Rating, Long> {
+
+    // Todas las calificaciones de un professional (ordenadas por fecha)
+    List<Rating> findByProfessionalIdOrderByCreatedAtDesc(Long professionalId);
+
+    // Promedio de score de un professional
+    @Query("SELECT AVG(r.score) FROM Rating r WHERE r.professional.id = :professionalId")
+    Optional<Double> findAverageScoreByProfessionalId(Long professionalId);
+
+    List<Rating> findByProfessionalId(Long professionalId);
+
+    // Cantidad total de calificaciones de un professional
+    long countByProfessionalId(Long professionalId);
+
+    // Todas las calificaciones dadas por un cliente
+    List<Rating> findByClientIdOrderByCreatedAtDesc(Long clientId);
+
+    // Calificaciones de un professional en un business específico
+    List<Rating> findByProfessionalIdAndBusinessId(Long professionalId, Long businessId);
+
+    // Calificaciones de un professional en un business ordenadas por fecha
+    List<Rating> findByProfessionalIdAndBusinessIdOrderByCreatedAtDesc(Long professionalId, Long businessId);
+
+    //
+    List<Rating> findByProfessionalIdAndWorkHistoryIdOrderByCreatedAtDesc(Long professionalId, Long workHistoryId);
+}
