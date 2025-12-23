@@ -1,7 +1,9 @@
 package com.example.waiter_rating.security;
 
 import com.example.waiter_rating.model.Client;
+import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.service.ClientService;
+import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,12 +20,14 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final ClientService clientService;
+    private final ProfessionalService professionalService;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    public OAuth2LoginSuccessHandler(ClientService clientService) {
+    public OAuth2LoginSuccessHandler(ClientService clientService, ProfessionalService professionalService) {
         this.clientService = clientService;
+        this.professionalService = professionalService;
     }
 
     @Override
@@ -42,12 +46,38 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         System.out.println("   Name: " + name);
         System.out.println("   Google ID: " + googleId);
 
+        // Verificar si es un Professional
+        Professional professional = professionalService.findByEmail(email);
+
+        if (professional != null) {
+            // Es un Professional
+            System.out.println("✅ Profesional autenticado: " + professional.getName());
+
+            HttpSession session = request.getSession(true);
+            session.setAttribute("userId", professional.getId());
+            session.setAttribute("userType", "PROFESSIONAL");
+
+            // Verificar si tiene perfil completo
+            boolean hasCompleteProfile = professional.getCv() != null;
+
+            String redirectUrl;
+            if (hasCompleteProfile) {
+                redirectUrl = frontendUrl + "/professional-dashboard";
+            } else {
+                redirectUrl = frontendUrl + "/professional-register?step=complete-profile";
+            }
+
+            System.out.println("🔄 Redirigiendo profesional a: " + redirectUrl);
+            getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+            return;
+        }
+
+        // Si no es Professional, crear como Client
         Client client = clientService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
 
         if (client.getId() != null) {
             System.out.println("✅ Cliente autenticado: " + client.getName() + " (ID: " + client.getId() + ")");
 
-            // ✅ Crear sesión HTTP explícitamente
             HttpSession session = request.getSession(true);
             session.setAttribute("userId", client.getId());
             session.setAttribute("userType", "CLIENT");
@@ -55,8 +85,9 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             System.out.println("✅ Sesión HTTP creada: " + session.getId());
         }
 
-        // ✅ Redirigir al frontend (usa la URL del application.properties)
-        System.out.println("🔄 Redirigiendo a: " + frontendUrl);
-        getRedirectStrategy().sendRedirect(request, response, frontendUrl);
+        // Redirigir cliente a su dashboard
+        String redirectUrl = frontendUrl + "/client-dashboard";
+        System.out.println("🔄 Redirigiendo cliente a: " + redirectUrl);
+        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }

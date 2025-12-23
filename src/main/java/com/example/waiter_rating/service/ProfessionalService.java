@@ -3,6 +3,7 @@ package com.example.waiter_rating.service;
 import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.ProfessionType;
+import com.example.waiter_rating.model.Professional;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,4 +36,6 @@ public interface ProfessionalService {
 
     /** Registrar un cambio de lugar de trabajo */
     void registerWorkplaceChange(Long professionalId);
+    /** Buscar professional entity por email (para autenticación) */
+    Professional findByEmail(String email);
 }
