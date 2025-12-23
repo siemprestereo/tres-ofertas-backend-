@@ -1,6 +1,7 @@
 package com.example.waiter_rating.config;
 
 import com.example.waiter_rating.security.OAuth2LoginSuccessHandler;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -93,6 +94,13 @@ public class SecurityConfig {
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(oAuth2LoginSuccessHandler)
+                )
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\": \"No autenticado\"}");
+                        })
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
