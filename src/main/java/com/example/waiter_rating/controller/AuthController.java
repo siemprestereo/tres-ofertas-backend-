@@ -144,6 +144,38 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Logout exitoso"));
     }
 
+    @DeleteMapping("/delete-account")
+    public ResponseEntity<?> deleteAccount(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        String userType = (String) session.getAttribute("userType");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autenticado"));
+        }
+
+        if (!"PROFESSIONAL".equals(userType)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Solo profesionales pueden eliminar su cuenta"));
+        }
+
+        Optional<Professional> professionalOpt = professionalRepository.findById(userId);
+
+        if (professionalOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Profesional no encontrado"));
+        }
+
+        // Eliminar profesional (cascade eliminará CV, ratings, etc.)
+        professionalRepository.deleteById(userId);
+
+        // Invalidar sesión
+        session.invalidate();
+        SecurityContextHolder.clearContext();
+
+        return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
@@ -302,4 +334,6 @@ public class AuthController {
                     .body(Map.of("error", "Error al guardar la imagen"));
         }
     }
+
+
 }
