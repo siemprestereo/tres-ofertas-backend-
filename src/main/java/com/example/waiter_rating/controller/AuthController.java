@@ -1,6 +1,8 @@
 package com.example.waiter_rating.controller;
 
+import com.example.waiter_rating.model.Client;
 import com.example.waiter_rating.model.Professional;
+import com.example.waiter_rating.repository.ClientRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;
 import jakarta.servlet.http.HttpSession;
 import net.coobird.thumbnailator.Thumbnails;
@@ -26,6 +28,8 @@ public class AuthController {
 
     private final ProfessionalRepo professionalRepository;
     private final PasswordEncoder passwordEncoder;
+
+    private final ClientRepo clientRepo;
 
     // Directorio para guardar fotos de perfil
     private static final String UPLOAD_DIR = "uploads/profiles/";
@@ -328,6 +332,109 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al guardar la imagen"));
         }
+    }
+
+    // ========== CLIENTES ==========
+
+    @PostMapping("/register-client")
+    public ResponseEntity<?> registerClient(@RequestBody Map<String, String> request, HttpSession session) {
+        String email = request.get("email");
+        String password = request.get("password");
+        String name = request.get("name");
+
+        if (email == null || password == null || name == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email, password y nombre son requeridos"));
+        }
+
+        if (clientRepo.findByEmail(email).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "El email ya está registrado"));
+        }
+
+        Client client = new Client();
+        client.setName(name);
+        client.setEmail(email);
+        client.setPassword(passwordEncoder.encode(password));
+
+        clientRepo.save(client);
+
+        // Crear sesión HTTP
+        session.setAttribute("userId", client.getId());
+        session.setAttribute("userType", "CLIENT");
+
+        // Autenticar en Spring Security
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        return ResponseEntity.ok(Map.of(
+                "id", client.getId(),
+                "email", client.getEmail(),
+                "name", client.getName()
+        ));
+    }
+
+    @PostMapping("/login-client")
+    public ResponseEntity<?> loginClient(@RequestBody Map<String, String> request, HttpSession session) {
+        String email = request.get("email");
+        String password = request.get("password");
+
+        if (email == null || password == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email y password son requeridos"));
+        }
+
+        Optional<Client> clientOpt = clientRepo.findByEmail(email);
+
+        if (clientOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Credenciales inválidas"));
+        }
+
+        Client client = clientOpt.get();
+
+        if (!passwordEncoder.matches(password, client.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Credenciales inválidas"));
+        }
+
+        // Crear sesión HTTP
+        session.setAttribute("userId", client.getId());
+        session.setAttribute("userType", "CLIENT");
+
+        // Autenticar en Spring Security
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        return ResponseEntity.ok(Map.of(
+                "id", client.getId(),
+                "email", client.getEmail(),
+                "name", client.getName()
+        ));
+    }
+
+    @DeleteMapping("/delete-account-client/{userId}")
+    public ResponseEntity<?> deleteClientAccount(@PathVariable Long userId, HttpSession session) {
+        Long sessionUserId = (Long) session.getAttribute("userId");
+        Long userToDelete = sessionUserId != null ? sessionUserId : userId;
+
+        Optional<Client> clientOpt = clientRepo.findById(userToDelete);
+
+        if (clientOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Cliente no encontrado"));
+        }
+
+        // Eliminar cliente (cascade eliminará ratings, etc.)
+        clientRepo.deleteById(userToDelete);
+
+        // Invalidar sesión si existe
+        if (sessionUserId != null) {
+            session.invalidate();
+            SecurityContextHolder.clearContext();
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
     }
 
 
