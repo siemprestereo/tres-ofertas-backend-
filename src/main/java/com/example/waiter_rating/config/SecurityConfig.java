@@ -63,7 +63,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/cv/professional/**").permitAll()
 
                         // Ver perfil público de profesional
-                        .requestMatchers(HttpMethod.GET, "/api/professional/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/professionals/**").permitAll()
 
                         // Listar restaurantes (público)
                         .requestMatchers(HttpMethod.GET, "/api/restaurants", "/api/restaurants/*").permitAll()
