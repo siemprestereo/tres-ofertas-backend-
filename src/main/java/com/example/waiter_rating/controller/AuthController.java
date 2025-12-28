@@ -221,6 +221,37 @@ public class AuthController {
         ));
     }
 
+    @GetMapping("/me/client")
+    public ResponseEntity<?> getCurrentClient(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        String userType = (String) session.getAttribute("userType");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autenticado"));
+        }
+
+        if (!"CLIENT".equals(userType)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Este endpoint es solo para clientes"));
+        }
+
+        Optional<Client> clientOpt = clientRepo.findById(userId);
+
+        if (clientOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Cliente no encontrado"));
+        }
+
+        Client client = clientOpt.get();
+
+        return ResponseEntity.ok(Map.of(
+                "id", client.getId(),
+                "email", client.getEmail(),
+                "name", client.getName()
+        ));
+    }
+
     @PutMapping("/update-profile")
     public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> updates, HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
