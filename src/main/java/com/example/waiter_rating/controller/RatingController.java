@@ -193,6 +193,23 @@ public class RatingController {
     }
 
     /**
+     * Obtener todas las calificaciones de un cliente específico
+     * Este endpoint es para que el cliente vea sus propias calificaciones
+     */
+    @GetMapping("/client/{clientId}")
+    public ResponseEntity<List<RatingResponse>> getRatingsByClient(@PathVariable Long clientId) {
+        // Obtener las calificaciones del cliente
+        List<Rating> ratings = ratingService.getRatingsByClient(clientId);
+
+        // Convertir a DTO
+        List<RatingResponse> response = ratings.stream()
+                .map(this::toResponse)
+                .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Obtener calificaciones de un professional (PÚBLICO)
      * Opcionalmente filtradas por workplace
      */
