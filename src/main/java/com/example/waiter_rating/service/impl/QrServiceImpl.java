@@ -77,6 +77,8 @@ public class QrServiceImpl implements QrService {
                 .active(true)
                 .build();
 
+        token = qrRepo.save(token);  // ← LÍNEA AGREGADA - GUARDAR EN BD
+
         // Generar URL completa del QR
         String qrUrl = frontendUrl + "/rate/" + token.getCode();
 
