@@ -56,7 +56,7 @@ public class QrServiceImpl implements QrService {
         WorkHistory activeWork = professional.getWorkHistory().stream()
                 .filter(WorkHistory::getIsActive)
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("El profesional debe tener al menos un trabajo ACTUAL (activo) para generar un QR. Por favor, agregue un historial laboral actual."));
+                .orElseThrow(() -> new IllegalStateException("El profesional debe tener al menos un trabajo ACTUAL (activo) para generar un QR."));
 
         // Normalizar TTL
         int ttl = ttlMinutes <= 0 ? DEFAULT_TTL_MIN
@@ -68,15 +68,14 @@ public class QrServiceImpl implements QrService {
         // Generar código único corto
         String code = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
 
+        // Construir el token con todos los campos
         QrToken token = QrToken.builder()
                 .code(code)
                 .professional(professional)
-                .business(activeWork.getBusiness())  // ← Usar el business del trabajo activo
+                .business(activeWork.getBusiness())  // Puede ser null, no hay problema
                 .expiresAt(LocalDateTime.now().plusMinutes(ttl))
                 .active(true)
                 .build();
-
-        token = qrRepo.save(token);
 
         // Generar URL completa del QR
         String qrUrl = frontendUrl + "/rate/" + token.getCode();
