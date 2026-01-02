@@ -89,7 +89,7 @@ public class QrServiceImpl implements QrService {
         QrCreateResponse resp = new QrCreateResponse();
         resp.setCode(token.getCode());
         resp.setDeepLink(qrUrl);
-        resp.setExpiresAt(token.getExpiresAt().toString());
+        resp.setExpiresAt(token.getExpiresAt().toString() + "Z");
         resp.setQrPngBase64(base64);
 
         return resp;
