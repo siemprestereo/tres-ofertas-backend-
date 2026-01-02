@@ -3,6 +3,7 @@ package com.example.waiter_rating.service.impl;
 import com.example.waiter_rating.dto.response.QrCreateResponse;
 import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.model.QrToken;
+import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.QrTokenRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.UUID;
+
 
 @Service
 public class QrServiceImpl implements QrService {
@@ -50,6 +52,12 @@ public class QrServiceImpl implements QrService {
         // ✅ VALIDACIÓN: El professional debe tener al menos 1 trabajo actual
         validateProfessionalHasActiveJob(professionalId);
 
+        // Obtener el primer trabajo activo del professional
+        WorkHistory activeWork = professional.getWorkHistory().stream()
+                .filter(WorkHistory::getIsActive)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("El profesional debe tener al menos un trabajo ACTUAL (activo) para generar un QR. Por favor, agregue un historial laboral actual."));
+
         // Normalizar TTL
         int ttl = ttlMinutes <= 0 ? DEFAULT_TTL_MIN
                 : Math.max(MIN_TTL_MIN, Math.min(MAX_TTL_MIN, ttlMinutes));
@@ -63,6 +71,7 @@ public class QrServiceImpl implements QrService {
         QrToken token = QrToken.builder()
                 .code(code)
                 .professional(professional)
+                .business(activeWork.getBusiness())  // ← Usar el business del trabajo activo
                 .expiresAt(LocalDateTime.now().plusMinutes(ttl))
                 .active(true)
                 .build();
@@ -84,7 +93,6 @@ public class QrServiceImpl implements QrService {
 
         return resp;
     }
-
     @Override
     @Transactional(readOnly = true)
     public Long resolveProfessional(String code) {
