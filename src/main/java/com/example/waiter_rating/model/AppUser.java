@@ -30,13 +30,13 @@ public abstract class AppUser {
     private String email;
 
     @Column(length = 20)
-    private String phone;  // Campo agregado en V17
+    private String phone;
 
     @Column(length = 100)
-    private String location;  // ← NUEVO: Ciudad, País (ej: "Buenos Aires, Argentina")
+    private String location;
 
     @Column(length = 100)
-    private String professionalTitle;  // ← NUEVO: Título profesional (ej: "Mesero Senior")
+    private String professionalTitle;
 
     @Column(length = 255)
     private String password;
@@ -53,6 +53,10 @@ public abstract class AppUser {
     @Column(length = 100)
     private String providerId; // ID del usuario en Google OAuth
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "active_role", nullable = false, length = 20)
+    private UserRole activeRole = UserRole.CLIENT; // Rol activo del usuario
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -63,4 +67,10 @@ public abstract class AppUser {
 
     // Método abstracto para obtener el tipo de usuario
     public abstract String getUserType();
+
+    // Enum para los roles
+    public enum UserRole {
+        CLIENT,
+        PROFESSIONAL
+    }
 }
