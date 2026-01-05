@@ -5,6 +5,7 @@ import com.example.waiter_rating.dto.response.ClientResponse;
 import com.example.waiter_rating.model.Client;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.Professional;
+import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.ClientRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;
@@ -158,7 +159,15 @@ public class ClientServiceImpl implements ClientService {
             throw new IllegalStateException("Este usuario ya es un profesional");
         }
 
-        // 3. Crear el nuevo Professional con los mismos datos básicos
+        // 3. Validar y convertir professionType a enum
+        ProfessionType profession;
+        try {
+            profession = ProfessionType.valueOf(professionType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Tipo de profesión inválido: " + professionType);
+        }
+
+        // 4. Crear el nuevo Professional con los mismos datos básicos
         Professional professional = new Professional();
         professional.setEmail(client.getEmail());
         professional.setName(client.getName());
@@ -166,17 +175,17 @@ public class ClientServiceImpl implements ClientService {
         professional.setProfilePicture(client.getProfilePicture());
         professional.setEmailVerified(client.getEmailVerified());
         professional.setProvider(client.getProvider());
-        professional.setGoogleId(client.getGoogleId());
-        professional.setProfessionType(professionType);
+        professional.setProviderId(client.getProviderId());
+        professional.setProfessionType(profession); // ← CORREGIDO: usar el enum
         professional.setProfessionalTitle(professionalTitle);
 
-        // 4. Eliminar el cliente viejo
+        // 5. Eliminar el cliente viejo
         clientRepo.delete(client);
 
-        // 5. Guardar el profesional nuevo
+        // 6. Guardar el profesional nuevo
         professional = professionalRepo.save(professional);
 
-        // 6. Crear CV vacío para el profesional
+        // 7. Crear CV vacío para el profesional
         cvService.getOrCreateForProfessional(professional.getId());
 
         System.out.println("✅ Cliente " + clientId + " convertido a Professional " + professional.getId());
