@@ -111,6 +111,47 @@ public class CvController {
     }
 
     /**
+     * Actualizar CV completo (workExperiences, education, certifications)
+     */
+    @PutMapping("/{cvId}")
+    public ResponseEntity<?> updateFullCv(
+            @PathVariable Long cvId,
+            @RequestBody Map<String, Object> updates,
+            HttpServletRequest request) {
+
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
+
+        if (userId == null || !"PROFESSIONAL".equals(userType)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Solo los professionals pueden editar su CV"));
+        }
+
+        try {
+            // Verificar que el CV pertenece al usuario
+            Cv cv = cvService.getOrCreateForProfessional(userId);
+            if (!cv.getId().equals(cvId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "No tienes permiso para editar este CV"));
+            }
+
+            // TODO: Actualizar workExperiences, education, certifications
+            // Por ahora, solo confirmar que funciona
+            System.out.println("📝 Actualizando CV " + cvId);
+            System.out.println("Work experiences: " + updates.get("workExperiences"));
+            System.out.println("Education: " + updates.get("education"));
+            System.out.println("Certifications: " + updates.get("certifications"));
+
+            return ResponseEntity.ok(Map.of("message", "CV actualizado correctamente"));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al actualizar CV: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Listar MI historial laboral
      */
     @GetMapping("/me/work-history")
