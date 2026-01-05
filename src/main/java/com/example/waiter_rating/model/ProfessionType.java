@@ -13,6 +13,7 @@ public enum ProfessionType {
     BARTENDER("Bartender"),
     CONSTRUCTION_WORKER("Obrero de Construcción"),
     GARDENER("Jardinero/a"),
+    AIR_CONDITIONING_TECHNICIAN("Instalador de A.A"),
     OTHER("Otro");
 
     private final String displayName;
