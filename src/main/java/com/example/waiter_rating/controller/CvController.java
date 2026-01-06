@@ -4,20 +4,11 @@ import com.example.waiter_rating.dto.request.CvDescriptionRequest;
 import com.example.waiter_rating.dto.request.WorkHistoryRequest;
 import com.example.waiter_rating.dto.response.CvExperienceItem;
 import com.example.waiter_rating.dto.response.CvPublicResponse;
-import com.example.waiter_rating.model.Cv;
-import com.example.waiter_rating.model.Professional;
-import com.example.waiter_rating.model.WorkHistory;
-import com.example.waiter_rating.service.AuthService;
-import com.example.waiter_rating.service.CvService;
-import com.example.waiter_rating.service.PdfService;
-import com.example.waiter_rating.service.WorkHistoryService;
+import com.example.waiter_rating.model.*;
+import com.example.waiter_rating.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
@@ -33,12 +24,18 @@ public class CvController {
     private final WorkHistoryService workHistoryService;
     private final AuthService authService;
     private final PdfService pdfService;
+    private final EducationService educationService;
+    private final CertificationService certificationService;
 
-    public CvController(CvService cvService, WorkHistoryService workHistoryService, AuthService authService, PdfService pdfService) {
+    public CvController(CvService cvService, WorkHistoryService workHistoryService,
+                        AuthService authService, PdfService pdfService,
+                        EducationService educationService, CertificationService certificationService) {
         this.cvService = cvService;
         this.workHistoryService = workHistoryService;
         this.authService = authService;
         this.pdfService = pdfService;
+        this.educationService = educationService;
+        this.certificationService = certificationService;
     }
 
     // ========== ENDPOINTS PARA EL PROFESSIONAL LOGUEADO (/me) ==========
@@ -73,10 +70,8 @@ public class CvController {
                     .body(Map.of("error", "Solo los professionals pueden acceder a su CV"));
         }
 
-        // Obtener o crear el CV automáticamente
         Cv cv = cvService.getOrCreateForProfessional(userId);
 
-        // Devolver el CV completo con su ID y todas las relaciones
         return ResponseEntity.ok(Map.of(
                 "id", cv.getId(),
                 "professionalId", cv.getProfessional().getId(),
@@ -84,10 +79,11 @@ public class CvController {
                 "workExperiences", cv.getProfessional().getWorkHistory() != null
                         ? cv.getProfessional().getWorkHistory().stream().map(this::toItem).toList()
                         : List.of(),
-                "education", List.of(), // Placeholder para educación
-                "certifications", List.of() // Placeholder para certificaciones
+                "education", educationService.getEducationByProfessional(userId),
+                "certifications", certificationService.getCertificationsByProfessional(userId)
         ));
     }
+
     /**
      * Actualizar MI descripción
      */
@@ -135,16 +131,99 @@ public class CvController {
                         .body(Map.of("error", "No tienes permiso para editar este CV"));
             }
 
-            // TODO: Actualizar workExperiences, education, certifications
-            // Por ahora, solo confirmar que funciona
-            System.out.println("📝 Actualizando CV " + cvId);
-            System.out.println("Work experiences: " + updates.get("workExperiences"));
-            System.out.println("Education: " + updates.get("education"));
-            System.out.println("Certifications: " + updates.get("certifications"));
+            System.out.println("📝 Actualizando CV " + cvId + " del usuario " + userId);
 
+            // 1. Actualizar work experiences
+            List<Map<String, Object>> workExperiences = (List<Map<String, Object>>) updates.get("workExperiences");
+            if (workExperiences != null) {
+                System.out.println("💼 Procesando " + workExperiences.size() + " experiencias laborales");
+
+                for (Map<String, Object> exp : workExperiences) {
+                    WorkHistoryRequest req = new WorkHistoryRequest();
+                    req.setBusinessName((String) exp.get("company"));
+                    req.setPosition((String) exp.get("position"));
+
+                    // Parsear fechas de String a LocalDate
+                    String startDateStr = (String) exp.get("startDate");
+                    String endDateStr = (String) exp.get("endDate");
+
+                    req.setStartDate(startDateStr != null && !startDateStr.isEmpty() ?
+                            java.time.LocalDate.parse(startDateStr) : null);
+                    req.setEndDate(endDateStr != null && !endDateStr.isEmpty() ?
+                            java.time.LocalDate.parse(endDateStr) : null);
+
+                    req.setDescription((String) exp.get("description"));
+                    req.setReferenceContact((String) exp.get("referenceName"));
+
+                    Object workHistoryIdObj = exp.get("workHistoryId");
+                    if (workHistoryIdObj != null) {
+                        Long workHistoryId = ((Number) workHistoryIdObj).longValue();
+                        System.out.println("  ✏️ Actualizando work history ID: " + workHistoryId);
+                        workHistoryService.updateWorkHistory(userId, workHistoryId, req);
+                    } else if (req.getBusinessName() != null && !req.getBusinessName().isEmpty()) {
+                        System.out.println("  ➕ Creando nueva work history");
+                        workHistoryService.addWorkHistory(userId, req);
+                    }
+                }
+            }
+
+            // 2. Actualizar education
+            List<Map<String, Object>> educationList = (List<Map<String, Object>>) updates.get("education");
+            if (educationList != null) {
+                System.out.println("🎓 Procesando " + educationList.size() + " registros de educación");
+
+                // Primero eliminar todos los existentes
+                educationService.deleteAllByProfessional(userId);
+
+                // Crear los nuevos
+                for (Map<String, Object> eduMap : educationList) {
+                    if (eduMap.get("institution") != null && !eduMap.get("institution").toString().isEmpty()) {
+                        Education edu = new Education();
+                        edu.setInstitution((String) eduMap.get("institution"));
+                        edu.setDegree((String) eduMap.get("degree"));
+                        edu.setStartDate(eduMap.get("startDate") != null ?
+                                java.time.LocalDate.parse((String) eduMap.get("startDate")) : null);
+                        edu.setEndDate(eduMap.get("endDate") != null ?
+                                java.time.LocalDate.parse((String) eduMap.get("endDate")) : null);
+                        edu.setCurrentlyStudying((Boolean) eduMap.getOrDefault("currentlyStudying", false));
+                        edu.setDescription((String) eduMap.get("description"));
+
+                        System.out.println("  ➕ Creando educación: " + edu.getInstitution());
+                        educationService.addEducation(userId, edu);
+                    }
+                }
+            }
+
+            // 3. Actualizar certifications
+            List<Map<String, Object>> certificationsList = (List<Map<String, Object>>) updates.get("certifications");
+            if (certificationsList != null) {
+                System.out.println("🏆 Procesando " + certificationsList.size() + " certificaciones");
+
+                // Primero eliminar todos los existentes
+                certificationService.deleteAllByProfessional(userId);
+
+                // Crear los nuevos
+                for (Map<String, Object> certMap : certificationsList) {
+                    if (certMap.get("name") != null && !certMap.get("name").toString().isEmpty()) {
+                        Certification cert = new Certification();
+                        cert.setName((String) certMap.get("name"));
+                        cert.setIssuer((String) certMap.get("issuer"));
+                        cert.setDateObtained(certMap.get("dateObtained") != null ?
+                                java.time.LocalDate.parse((String) certMap.get("dateObtained")) : null);
+                        cert.setExpiryDate(certMap.get("expiryDate") != null ?
+                                java.time.LocalDate.parse((String) certMap.get("expiryDate")) : null);
+
+                        System.out.println("  ➕ Creando certificación: " + cert.getName());
+                        certificationService.addCertification(userId, cert);
+                    }
+                }
+            }
+
+            System.out.println("✅ CV actualizado correctamente");
             return ResponseEntity.ok(Map.of("message", "CV actualizado correctamente"));
 
         } catch (Exception e) {
+            System.err.println("❌ Error actualizando CV: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al actualizar CV: " + e.getMessage()));
@@ -341,6 +420,4 @@ public class CvController {
         item.setReferenceContact(wh.getReferenceContact());
         return item;
     }
-
-
 }
