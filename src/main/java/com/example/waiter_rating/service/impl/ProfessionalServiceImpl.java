@@ -178,6 +178,10 @@ public class ProfessionalServiceImpl implements ProfessionalService {
     @Override
     @Transactional
     public void updateProfessionalReputation(Long professionalId) {
+
+        System.out.println(">>> updateProfessionalReputation called - professionalId: " + professionalId);
+
+
         Professional professional = professionalRepo.findById(professionalId)
                 .orElseThrow(() -> new RuntimeException("Professional not found with id: " + professionalId));
 
@@ -187,11 +191,15 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         // Contar total de ratings
         Long totalRatings = ratingRepo.countRatingsByProfessional(professionalId);
 
+        System.out.println(">>> Calculado - averageScore: " + averageScore + ", totalRatings: " + totalRatings);
+
         // Actualizar campos
         professional.setReputationScore(averageScore != null ? averageScore : 0.0);
         professional.setTotalRatings(totalRatings != null ? totalRatings.intValue() : 0);
 
         // Guardar cambios
         professionalRepo.save(professional);
+
+        System.out.println(">>> Professional guardado - reputationScore: " + professional.getReputationScore() + ", totalRatings: " + professional.getTotalRatings());
     }
 }

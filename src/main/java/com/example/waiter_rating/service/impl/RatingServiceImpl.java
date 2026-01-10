@@ -106,9 +106,12 @@ public class RatingServiceImpl implements RatingService {
 
         Rating savedRating = ratingRepo.save(rating);
 
+        System.out.println(">>> ANTES de actualizar reputación - Professional ID: " + savedRating.getProfessional().getId());
+
         // *** ACTUALIZAR REPUTACIÓN DEL PROFESSIONAL ***
         professionalService.updateProfessionalReputation(savedRating.getProfessional().getId());
 
+        System.out.println(">>> DESPUÉS de actualizar reputación");
         return savedRating;
     }
 
