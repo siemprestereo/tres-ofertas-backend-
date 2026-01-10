@@ -3,6 +3,7 @@ package com.example.waiter_rating.repository;
 import com.example.waiter_rating.model.Rating;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,4 +35,14 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
 
     //
     List<Rating> findByProfessionalIdAndWorkHistoryIdOrderByCreatedAtDesc(Long professionalId, Long workHistoryId);
+
+    @Query("SELECT AVG(r.score) FROM Rating r WHERE r.professional.id = :professionalId")
+    Double calculateAverageScore(@Param("professionalId") Long professionalId);
+
+    @Query("SELECT COUNT(r) FROM Rating r WHERE r.professional.id = :professionalId")
+    Long countRatingsByProfessional(@Param("professionalId") Long professionalId);
+
+
+
+
 }

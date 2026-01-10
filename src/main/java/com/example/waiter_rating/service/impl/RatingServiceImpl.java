@@ -10,6 +10,7 @@ import com.example.waiter_rating.repository.BusinessRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
 import com.example.waiter_rating.service.RatingService;
+import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,17 +34,23 @@ public class RatingServiceImpl implements RatingService {
     private final QrTokenRepo qrTokenRepo;
     private final WorkHistoryRepo workHistoryRepo;
 
+    // ===== Services =====
+    private final ProfessionalService professionalService;
+
     public RatingServiceImpl(RatingRepo ratingRepo,
                              ClientRepo clientRepo,
                              ProfessionalRepo professionalRepo,
                              BusinessRepo businessRepo,
-                             QrTokenRepo qrTokenRepo, WorkHistoryRepo workHistoryRepo) {
+                             QrTokenRepo qrTokenRepo,
+                             WorkHistoryRepo workHistoryRepo,
+                             ProfessionalService professionalService) {
         this.ratingRepo = ratingRepo;
         this.clientRepo = clientRepo;
         this.professionalRepo = professionalRepo;
         this.businessRepo = businessRepo;
         this.qrTokenRepo = qrTokenRepo;
         this.workHistoryRepo = workHistoryRepo;
+        this.professionalService = professionalService;
     }
 
     // =========================================================
@@ -97,7 +104,12 @@ public class RatingServiceImpl implements RatingService {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        return ratingRepo.save(rating);
+        Rating savedRating = ratingRepo.save(rating);
+
+        // *** ACTUALIZAR REPUTACIÓN DEL PROFESSIONAL ***
+        professionalService.updateProfessionalReputation(savedRating.getProfessional().getId());
+
+        return savedRating;
     }
 
     // =========================================================
@@ -146,6 +158,9 @@ public class RatingServiceImpl implements RatingService {
         token.setActive(false);
         qrTokenRepo.save(token);
 
+        // *** ACTUALIZAR REPUTACIÓN DEL PROFESSIONAL ***
+        professionalService.updateProfessionalReputation(saved.getProfessional().getId());
+
         return saved;
     }
 
@@ -160,7 +175,12 @@ public class RatingServiceImpl implements RatingService {
             if (newScore != null) r.setScore(newScore);
             if (newComment != null) r.setComment(newComment);
             r.setUpdatedAt(LocalDateTime.now());
-            return ratingRepo.save(r);
+            Rating updatedRating = ratingRepo.save(r);
+
+            // *** ACTUALIZAR REPUTACIÓN DEL PROFESSIONAL ***
+            professionalService.updateProfessionalReputation(updatedRating.getProfessional().getId());
+
+            return updatedRating;
         });
     }
 
@@ -172,7 +192,15 @@ public class RatingServiceImpl implements RatingService {
     public boolean deleteRating(Long ratingId) {
         return ratingRepo.findById(ratingId).map(r -> {
             ensureEditable(r.getCreatedAt());
+
+            // *** GUARDAR EL ID DEL PROFESSIONAL ANTES DE ELIMINAR ***
+            Long professionalId = r.getProfessional().getId();
+
             ratingRepo.delete(r);
+
+            // *** ACTUALIZAR REPUTACIÓN DEL PROFESSIONAL ***
+            professionalService.updateProfessionalReputation(professionalId);
+
             return true;
         }).orElse(false);
     }

@@ -5,6 +5,7 @@ import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.repository.ProfessionalRepo;
+import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.ProfessionalService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,9 +18,11 @@ import java.util.stream.Collectors;
 public class ProfessionalServiceImpl implements ProfessionalService {
 
     private final ProfessionalRepo professionalRepo;
+    private final RatingRepo ratingRepo;
 
-    public ProfessionalServiceImpl(ProfessionalRepo professionalRepo) {
+    public ProfessionalServiceImpl(ProfessionalRepo professionalRepo, RatingRepo ratingRepo) {
         this.professionalRepo = professionalRepo;
+        this.ratingRepo = ratingRepo;
     }
 
     @Override
@@ -170,5 +173,25 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         response.setMonthlyWorkplaceChanges(professional.getMonthlyWorkplaceChanges());
         response.setCanChangeWorkplace(professional.canChangeWorkplace());
         return response;
+    }
+
+    @Override
+    @Transactional
+    public void updateProfessionalReputation(Long professionalId) {
+        Professional professional = professionalRepo.findById(professionalId)
+                .orElseThrow(() -> new RuntimeException("Professional not found with id: " + professionalId));
+
+        // Calcular promedio (puede ser null si no hay ratings)
+        Double averageScore = ratingRepo.calculateAverageScore(professionalId);
+
+        // Contar total de ratings
+        Long totalRatings = ratingRepo.countRatingsByProfessional(professionalId);
+
+        // Actualizar campos
+        professional.setReputationScore(averageScore != null ? averageScore : 0.0);
+        professional.setTotalRatings(totalRatings != null ? totalRatings.intValue() : 0);
+
+        // Guardar cambios
+        professionalRepo.save(professional);
     }
 }

@@ -40,4 +40,12 @@ public interface ProfessionalService {
     Professional findByEmail(String email);
 
     Professional findOrCreateFromGoogle(String email, String name, String googleId, Boolean emailVerified);
+
+    /**
+     * Recalcula y actualiza la reputación de un profesional
+     * basándose en todos sus ratings actuales
+     * @param professionalId ID del profesional a actualizar
+     */
+    void updateProfessionalReputation(Long professionalId);
+
 }

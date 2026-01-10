@@ -40,4 +40,6 @@ public interface RatingService {
      * Obtener calificaciones de un professional en un workplace específico
      */
     List<Rating> getRatingsByProfessionalAndWorkplace(Long professionalId, Long workHistoryId);
+
+
 }
