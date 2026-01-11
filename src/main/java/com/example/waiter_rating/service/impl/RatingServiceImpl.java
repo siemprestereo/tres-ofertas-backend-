@@ -25,6 +25,7 @@ public class RatingServiceImpl implements RatingService {
 
     // ===== Configurables =====
     private static final int EDIT_WINDOW_MINUTES = 5;
+    private static final int RATING_COOLDOWN_MONTHS = 6;
 
     // ===== Repos =====
     private final RatingRepo ratingRepo;
@@ -91,11 +92,14 @@ public class RatingServiceImpl implements RatingService {
                     .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + request.getClientId()));
         }
 
+        // *** VALIDAR COOLDOWN DE 6 MESES ***
+        validateRatingCooldown(request.getClientId(), request.getProfessionalId());
+
         // Crear el rating
         Rating rating = Rating.builder()
                 .professional(professional)
                 .business(business)
-                .workHistory(workHistory) // ← NUEVO: asociar el workplace específico
+                .workHistory(workHistory)
                 .client(client)
                 .score(request.getScore())
                 .comment(request.getComment())
@@ -108,7 +112,6 @@ public class RatingServiceImpl implements RatingService {
 
         System.out.println(">>> ANTES de actualizar reputación - Professional ID: " + savedRating.getProfessional().getId());
 
-        // *** ACTUALIZAR REPUTACIÓN DEL PROFESSIONAL ***
         professionalService.updateProfessionalReputation(savedRating.getProfessional().getId());
 
         System.out.println(">>> DESPUÉS de actualizar reputación");
@@ -144,27 +147,52 @@ public class RatingServiceImpl implements RatingService {
                     .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + request.getClientId()));
         }
 
+        // *** VALIDAR COOLDOWN DE 6 MESES ***
+        validateRatingCooldown(request.getClientId(), professional.getId());
+
         Rating rating = Rating.builder()
                 .professional(professional)
                 .business(business)
                 .client(client)
                 .score(request.getScore())
                 .comment(request.getComment())
-                .serviceDate(LocalDateTime.now()) // Fecha del servicio
+                .serviceDate(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
         Rating saved = ratingRepo.save(rating);
 
-        // Política actual: un QR se invalida tras usarse
         token.setActive(false);
         qrTokenRepo.save(token);
 
-        // *** ACTUALIZAR REPUTACIÓN DEL PROFESSIONAL ***
         professionalService.updateProfessionalReputation(saved.getProfessional().getId());
 
         return saved;
+    }
+
+    /**
+     * Valida que el cliente pueda calificar a este profesional
+     * (debe haber pasado 6 meses desde la última calificación)
+     */
+    private void validateRatingCooldown(Long clientId, Long professionalId) {
+        if (clientId == null) {
+            return; // Si no hay cliente (rating anónimo), no validamos
+        }
+
+        Optional<Rating> lastRating = ratingRepo.findLastRatingByClientAndProfessional(clientId, professionalId);
+
+        if (lastRating.isPresent()) {
+            LocalDateTime lastRatingDate = lastRating.get().getCreatedAt();
+            LocalDateTime nextAllowedDate = lastRatingDate.plusMonths(RATING_COOLDOWN_MONTHS);
+
+            if (LocalDateTime.now().isBefore(nextAllowedDate)) {
+                String formattedDate = nextAllowedDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                throw new IllegalStateException(
+                        "Ya calificaste a este profesional. Podrás volver a calificarlo a partir del " + formattedDate
+                );
+            }
+        }
     }
 
     // =========================================================

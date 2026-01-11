@@ -42,7 +42,10 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
     @Query("SELECT COUNT(r) FROM Rating r WHERE r.professional.id = :professionalId")
     Long countRatingsByProfessional(@Param("professionalId") Long professionalId);
 
-
-
-
+         // Busca el último rating que un cliente le dio a un profesional
+    @Query("SELECT r FROM Rating r WHERE r.client.id = :clientId AND r.professional.id = :professionalId ORDER BY r.createdAt DESC")
+    Optional<Rating> findLastRatingByClientAndProfessional(@Param("clientId") Long clientId,
+                                                           @Param("professionalId") Long professionalId);
 }
+
+
