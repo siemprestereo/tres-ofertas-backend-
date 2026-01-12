@@ -25,4 +25,7 @@ public class WorkHistoryRequest {
     private String referenceContact;
 
     private String description;
+
+
+    private Boolean isFreelance = false;
 }

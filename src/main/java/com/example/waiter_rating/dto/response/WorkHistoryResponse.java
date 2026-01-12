@@ -14,4 +14,5 @@ public class WorkHistoryResponse {
     private String endDate;
     private Boolean isActive;
     private String referenceContact;
+    private Boolean isFreelance = false;
 }

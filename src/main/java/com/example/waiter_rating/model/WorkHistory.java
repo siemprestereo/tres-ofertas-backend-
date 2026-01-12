@@ -53,10 +53,14 @@ public class WorkHistory {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "is_freelance", nullable = false)
+    private Boolean isFreelance = false;
+
     // Método helper para verificar si está trabajando actualmente
     public boolean isCurrentJob() {
         return endDate == null && isActive;
     }
+
 
     // Actualizar el estado cuando se cierra la experiencia laboral
     public void closeJob(LocalDate endDate) {
