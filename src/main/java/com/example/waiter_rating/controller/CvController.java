@@ -155,6 +155,9 @@ public class CvController {
                     req.setDescription((String) exp.get("description"));
                     req.setReferenceContact((String) exp.get("referenceName"));
 
+                    // ✅ AGREGAR ESTA LÍNEA:
+                    req.setIsFreelance((Boolean) exp.getOrDefault("isFreelance", false));
+
                     Object workHistoryIdObj = exp.get("workHistoryId");
                     if (workHistoryIdObj != null) {
                         Long workHistoryId = ((Number) workHistoryIdObj).longValue();
