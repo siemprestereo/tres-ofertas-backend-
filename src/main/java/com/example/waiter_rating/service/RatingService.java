@@ -41,5 +41,5 @@ public interface RatingService {
      */
     List<Rating> getRatingsByProfessionalAndWorkplace(Long professionalId, Long workHistoryId);
 
-
+    List<Rating> getRatingsByWorkHistory(Long workHistoryId);
 }

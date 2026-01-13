@@ -278,4 +278,11 @@ public class RatingServiceImpl implements RatingService {
     public List<Rating> getRatingsByProfessionalAndWorkplace(Long professionalId, Long workHistoryId) {
         return ratingRepo.findByProfessionalIdAndWorkHistoryIdOrderByCreatedAtDesc(professionalId, workHistoryId);
     }
+
+    @Override
+    public List<Rating> getRatingsByWorkHistory(Long workHistoryId) {
+        return ratingRepo.findByWorkHistoryId(workHistoryId);
+    }
+
+
 }

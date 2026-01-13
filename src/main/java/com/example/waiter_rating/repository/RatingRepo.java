@@ -46,6 +46,8 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
     @Query("SELECT r FROM Rating r WHERE r.client.id = :clientId AND r.professional.id = :professionalId ORDER BY r.createdAt DESC")
     Optional<Rating> findLastRatingByClientAndProfessional(@Param("clientId") Long clientId,
                                                            @Param("professionalId") Long professionalId);
+
+    List<Rating> findByWorkHistoryId(Long workHistoryId);
 }
 
 

@@ -193,6 +193,20 @@ public class RatingController {
     }
 
     /**
+     * Obtener ratings por workHistoryId (PÚBLICO - para compartir CV)
+     */
+    @GetMapping("/work-history/{workHistoryId}")
+    public ResponseEntity<List<RatingResponse>> getRatingsByWorkHistory(@PathVariable Long workHistoryId) {
+        List<Rating> ratings = ratingService.getRatingsByWorkHistory(workHistoryId);
+
+        List<RatingResponse> response = ratings.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Obtener todas las calificaciones de un cliente específico
      * Este endpoint es para que el cliente vea sus propias calificaciones
      */
