@@ -74,6 +74,9 @@ public class SecurityConfig {
                         // Ver CV público
                         .requestMatchers(HttpMethod.GET, "/api/cv/professional/**").permitAll()
 
+                        // Download PDF
+                        .requestMatchers("/api/cv/*/download-pdf").permitAll()
+
                         // Ver perfil público de profesional
                         .requestMatchers(HttpMethod.GET, "/api/professionals/**").permitAll()
 
