@@ -1,5 +1,6 @@
 package com.example.waiter_rating.service.impl;
 
+import com.example.waiter_rating.dto.response.EducationResponse;
 import com.example.waiter_rating.model.Education;
 import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.repository.EducationRepo;
@@ -23,10 +24,23 @@ public class EducationServiceImpl implements EducationService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Education> getEducationByProfessional(Long professionalId) {
-        return educationRepo.findByProfessionalId(professionalId);
+    public List<EducationResponse> getEducationByProfessional(Long professionalId) {
+        return educationRepo.findByProfessionalId(professionalId).stream()
+                .map(this::toDTO)
+                .toList();
     }
 
+    private EducationResponse toDTO(Education education) {
+        return new EducationResponse(
+                education.getId(),
+                education.getInstitution(),
+                education.getDegree(),
+                education.getStartDate(),
+                education.getEndDate(),
+                education.getCurrentlyStudying(),
+                education.getDescription()
+        );
+    }
     @Override
     @Transactional
     public Education addEducation(Long professionalId, Education education) {

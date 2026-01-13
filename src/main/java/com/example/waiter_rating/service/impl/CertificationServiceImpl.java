@@ -1,5 +1,6 @@
 package com.example.waiter_rating.service.impl;
 
+import com.example.waiter_rating.dto.response.CertificationResponse;
 import com.example.waiter_rating.model.Certification;
 import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.repository.CertificationRepo;
@@ -21,10 +22,20 @@ public class CertificationServiceImpl implements CertificationService {
         this.professionalRepo = professionalRepo;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<Certification> getCertificationsByProfessional(Long professionalId) {
-        return certificationRepository.findByProfessionalId(professionalId);
+    public List<CertificationResponse> getCertificationsByProfessional(Long professionalId) {
+        return certificationRepository.findByProfessionalId(professionalId).stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
+    private CertificationResponse toDTO(Certification certification) {
+        return new CertificationResponse(
+                certification.getId(),
+                certification.getName(),
+                certification.getIssuer(),
+                certification.getDateObtained(),
+                certification.getExpiryDate()
+        );
     }
 
     @Override
