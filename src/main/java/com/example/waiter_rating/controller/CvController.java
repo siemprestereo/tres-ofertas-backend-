@@ -420,7 +420,9 @@ public class CvController {
         item.setStartDate(wh.getStartDate() != null ? wh.getStartDate().format(F) : null);
         item.setEndDate(wh.getEndDate() != null ? wh.getEndDate().format(F) : null);
         item.setIsActive(wh.getIsActive());
+        item.setIsFreelance(wh.getIsFreelance() != null ? wh.getIsFreelance() : false); // ← AGREGAR ESTA LÍNEA
         item.setReferenceContact(wh.getReferenceContact());
+
         return item;
     }
 }
