@@ -4,8 +4,6 @@ import com.example.waiter_rating.dto.request.CvDescriptionRequest;
 import com.example.waiter_rating.dto.request.WorkHistoryRequest;
 import com.example.waiter_rating.dto.response.CvExperienceItem;
 import com.example.waiter_rating.dto.response.CvPublicResponse;
-import com.example.waiter_rating.dto.response.CertificationResponse;
-import com.example.waiter_rating.dto.response.EducationResponse;
 import com.example.waiter_rating.model.*;
 import com.example.waiter_rating.service.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -135,6 +133,13 @@ public class CvController {
 
             System.out.println("📝 Actualizando CV " + cvId + " del usuario " + userId);
 
+            // 0. Actualizar descripción (SOBRE MÍ)
+            if (updates.containsKey("description")) {
+                String description = (String) updates.get("description");
+                cvService.updateDescription(userId, description);
+                System.out.println("✏️ Descripción actualizada: " + description);
+            }
+
             // 1. Actualizar work experiences
             List<Map<String, Object>> workExperiences = (List<Map<String, Object>>) updates.get("workExperiences");
             if (workExperiences != null) {
@@ -156,8 +161,6 @@ public class CvController {
 
                     req.setDescription((String) exp.get("description"));
                     req.setReferenceContact((String) exp.get("referenceName"));
-
-                    // ✅ AGREGAR ESTA LÍNEA:
                     req.setIsFreelance((Boolean) exp.getOrDefault("isFreelance", false));
 
                     Object workHistoryIdObj = exp.get("workHistoryId");
@@ -388,6 +391,8 @@ public class CvController {
         dto.setProfessionalId(p.getId());
         dto.setProfessionalName(p.getName());
         dto.setProfessionalEmail(p.getEmail());
+        dto.setProfessionalPhone(p.getPhone());
+        dto.setProfessionalLocation(p.getLocation());
         dto.setProfilePicture(p.getProfilePicture());
         dto.setProfessionType(p.getProfessionType());
 
@@ -400,7 +405,7 @@ public class CvController {
                 ? p.getWorkHistory().stream().map(this::toItem).toList()
                 : List.of());
 
-        // ← AGREGAR ESTAS DOS LÍNEAS:
+        // Education y Certifications
         dto.setEducation(educationService.getEducationByProfessional(p.getId()));
         dto.setCertifications(certificationService.getCertificationsByProfessional(p.getId()));
 
@@ -426,7 +431,7 @@ public class CvController {
         item.setStartDate(wh.getStartDate() != null ? wh.getStartDate().format(F) : null);
         item.setEndDate(wh.getEndDate() != null ? wh.getEndDate().format(F) : null);
         item.setIsActive(wh.getIsActive());
-        item.setIsFreelance(wh.getIsFreelance() != null ? wh.getIsFreelance() : false); // ← AGREGAR ESTA LÍNEA
+        item.setIsFreelance(wh.getIsFreelance() != null ? wh.getIsFreelance() : false);
         item.setReferenceContact(wh.getReferenceContact());
 
         return item;

@@ -10,6 +10,8 @@ public class CvPublicResponse {
     private Long professionalId;
     private String professionalName;
     private String professionalEmail;
+    private String professionalPhone; 
+    private String professionalLocation;
     private String profilePicture;
     private ProfessionType professionType;
 
