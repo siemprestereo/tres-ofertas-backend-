@@ -5,6 +5,7 @@ import com.example.waiter_rating.dto.request.WorkHistoryRequest;
 import com.example.waiter_rating.dto.response.CvExperienceItem;
 import com.example.waiter_rating.dto.response.CvPublicResponse;
 import com.example.waiter_rating.model.*;
+import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -27,15 +28,18 @@ public class CvController {
     private final EducationService educationService;
     private final CertificationService certificationService;
 
+    private final RatingRepo ratingRepo;
+
     public CvController(CvService cvService, WorkHistoryService workHistoryService,
                         AuthService authService, PdfService pdfService,
-                        EducationService educationService, CertificationService certificationService) {
+                        EducationService educationService, CertificationService certificationService, RatingRepo ratingRepo) {
         this.cvService = cvService;
         this.workHistoryService = workHistoryService;
         this.authService = authService;
         this.pdfService = pdfService;
         this.educationService = educationService;
         this.certificationService = certificationService;
+        this.ratingRepo = ratingRepo;
     }
 
     // ========== ENDPOINTS PARA EL PROFESSIONAL LOGUEADO (/me) ==========
@@ -433,6 +437,10 @@ public class CvController {
         item.setIsActive(wh.getIsActive());
         item.setIsFreelance(wh.getIsFreelance() != null ? wh.getIsFreelance() : false);
         item.setReferenceContact(wh.getReferenceContact());
+
+        // ✅ AGREGAR ESTO:
+        long ratingCount = ratingRepo.countByWorkHistoryId(wh.getId());
+        item.setTotalRatings((int) ratingCount);
 
         return item;
     }
