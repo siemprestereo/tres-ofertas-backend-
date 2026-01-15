@@ -48,6 +48,8 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
                                                            @Param("professionalId") Long professionalId);
 
     List<Rating> findByWorkHistoryId(Long workHistoryId);
+
+    long countByWorkHistoryId(Long workHistoryId);
 }
 
 

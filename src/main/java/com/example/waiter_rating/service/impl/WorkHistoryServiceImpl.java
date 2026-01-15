@@ -7,6 +7,7 @@ import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.BusinessRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;
+import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
 import com.example.waiter_rating.service.WorkHistoryService;
 import org.springframework.stereotype.Service;
@@ -23,12 +24,15 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
     private final ProfessionalRepo professionalRepo;
     private final BusinessRepo businessRepo;
 
+    private final RatingRepo ratingRepo;
+
     public WorkHistoryServiceImpl(WorkHistoryRepo workHistoryRepo,
                                   ProfessionalRepo professionalRepo,
-                                  BusinessRepo businessRepo) {
+                                  BusinessRepo businessRepo, RatingRepo ratingRepo) {
         this.workHistoryRepo = workHistoryRepo;
         this.professionalRepo = professionalRepo;
         this.businessRepo = businessRepo;
+        this.ratingRepo = ratingRepo;
     }
 
     @Override
@@ -89,54 +93,79 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
     }
 
     @Override
-    @Transactional
     public WorkHistory updateWorkHistory(Long professionalId, Long workHistoryId, WorkHistoryRequest request) {
-        Professional professional = professionalRepo.findById(professionalId)
-                .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + professionalId));
-
+        // Buscar el trabajo existente
         WorkHistory workHistory = workHistoryRepo.findById(workHistoryId)
-                .orElseThrow(() -> new IllegalArgumentException("WorkHistory no encontrado: " + workHistoryId));
+                .orElseThrow(() -> new IllegalArgumentException("Trabajo no encontrado con ID: " + workHistoryId));
 
-        // Verificar que el WorkHistory pertenece al professional
+        // Verificar que pertenece al professional correcto
         if (!workHistory.getProfessional().getId().equals(professionalId)) {
-            throw new IllegalArgumentException("Este trabajo no pertenece al professional especificado");
+            throw new IllegalArgumentException("Este trabajo no pertenece al profesional especificado");
         }
 
-        boolean wasActive = workHistory.getIsActive();
-        boolean willBeActive = (request.getEndDate() == null);
+        // ✅ CONTAR CALIFICACIONES ASOCIADAS A ESTE TRABAJO
+        long ratingCount = ratingRepo.countByWorkHistoryId(workHistoryId);
 
-        // Si está cambiando de inactivo a activo, validar límites
-        if (!wasActive && willBeActive) {
-            validateMaxActiveJobs(professionalId);
-            validateMonthlyWorkplaceChanges(professional);
+        // ✅ VALIDAR QUE NO SE MODIFIQUEN CAMPOS CRÍTICOS SI TIENE CALIFICACIONES
+        if (ratingCount > 0) {
+            // Validar que position no haya cambiado
+            if (request.getPosition() != null && !request.getPosition().equals(workHistory.getPosition())) {
+                throw new IllegalStateException(
+                        "No se puede cambiar el puesto de un trabajo que tiene " +
+                                ratingCount + " calificación" + (ratingCount > 1 ? "es" : "")
+                );
+            }
 
-            professional.registerWorkplaceChange();
-            professionalRepo.save(professional);
+            // Validar que businessName no haya cambiado
+            if (request.getBusinessName() != null && !request.getBusinessName().equals(workHistory.getBusinessName())) {
+                throw new IllegalStateException(
+                        "No se puede cambiar la empresa de un trabajo que tiene " +
+                                ratingCount + " calificación" + (ratingCount > 1 ? "es" : "")
+                );
+            }
+
+            // Validar que isFreelance no haya cambiado
+            if (request.getIsFreelance() != null && !request.getIsFreelance().equals(workHistory.getIsFreelance())) {
+                throw new IllegalStateException(
+                        "No se puede cambiar el tipo de trabajo (autónomo/relación de dependencia) " +
+                                "de un trabajo que tiene " + ratingCount + " calificación" + (ratingCount > 1 ? "es" : "")
+                );
+            }
         }
 
-        // Actualizar business (siempre crear nuevo, sin búsqueda)
-        Business business;
-        if (request.getBusinessId() != null) {
-            business = businessRepo.findById(request.getBusinessId())
-                    .orElseThrow(() -> new IllegalArgumentException("Business no encontrado: " + request.getBusinessId()));
+        // ✅ Campos que SÍ se pueden actualizar siempre:
+        if (request.getDescription() != null) {
+            workHistory.setDescription(request.getDescription());
+        }
+        if (request.getReferenceContact() != null) {
+            workHistory.setReferenceContact(request.getReferenceContact());
+        }
+        if (request.getStartDate() != null) {
+            workHistory.setStartDate(request.getStartDate());
+        }
+        if (request.getEndDate() != null) {
+            workHistory.setEndDate(request.getEndDate());
+        }
+
+        // Solo actualizar campos críticos si NO tiene calificaciones
+        if (ratingCount == 0) {
+            if (request.getPosition() != null) {
+                workHistory.setPosition(request.getPosition());
+            }
+            if (request.getBusinessName() != null) {
+                workHistory.setBusinessName(request.getBusinessName());
+            }
+            if (request.getIsFreelance() != null) {
+                workHistory.setIsFreelance(request.getIsFreelance());
+            }
+        }
+
+        // Actualizar isActive basado en endDate
+        if (request.getEndDate() != null) {
+            workHistory.setIsActive(false);
         } else {
-            // Siempre crear un nuevo Business con el nombre ingresado
-            business = Business.builder()
-                    .name(request.getBusinessName())
-                    .businessType(BusinessType.RESTAURANT)
-                    .build();
-            business = businessRepo.save(business);
+            workHistory.setIsActive(true);
         }
-
-        workHistory.setBusiness(business);
-        workHistory.setBusinessName(request.getBusinessName());
-        workHistory.setPosition(request.getPosition());
-        workHistory.setStartDate(request.getStartDate());
-        workHistory.setEndDate(request.getEndDate());
-        workHistory.setIsActive(willBeActive);
-        workHistory.setIsFreelance(request.getIsFreelance() != null ? request.getIsFreelance() : false); // ← AGREGAR ESTA LÍNEA
-        workHistory.setReferenceContact(request.getReferenceContact());
-        workHistory.setDescription(request.getDescription());
 
         return workHistoryRepo.save(workHistory);
     }
