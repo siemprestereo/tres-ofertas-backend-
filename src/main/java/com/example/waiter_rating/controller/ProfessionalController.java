@@ -3,14 +3,19 @@ package com.example.waiter_rating.controller;
 import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.ProfessionType;
+import com.example.waiter_rating.model.Professional;
+import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/professionals")
@@ -18,8 +23,11 @@ public class ProfessionalController {
 
     private final ProfessionalService professionalService;
 
-    public ProfessionalController(ProfessionalService professionalService) {
+    private final ProfessionalRepo professionalRepo;
+
+    public ProfessionalController(ProfessionalService professionalService, ProfessionalRepo professionalRepo) {
         this.professionalService = professionalService;
+        this.professionalRepo = professionalRepo;
     }
 
     /** Registrar un nuevo professional */
@@ -84,5 +92,65 @@ public class ProfessionalController {
     public ResponseEntity<Map<String, String>> registerWorkplaceChange(@PathVariable Long id) {
         professionalService.registerWorkplaceChange(id);
         return ResponseEntity.ok(Map.of("message", "Cambio de lugar de trabajo registrado exitosamente"));
+    }
+
+    // Agregar este endpoint al ProfessionalController.java
+
+    @PutMapping("/api/professionals/toggle-searchable")
+    public ResponseEntity<?> toggleSearchable(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            String email = userDetails.getUsername();
+
+            // Buscar el profesional por email
+            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
+
+            if (professionalOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Profesional no encontrado"));
+            }
+
+            Professional professional = professionalOpt.get();
+
+            // Toggle del campo searchable
+            professional.setSearchable(!professional.getSearchable());
+
+            // Guardar cambios
+            professionalRepo.save(professional);
+
+            // Retornar estado actualizado
+            return ResponseEntity.ok(Map.of(
+                    "searchable", professional.getSearchable(),
+                    "message", professional.getSearchable()
+                            ? "Perfil activado en búsquedas"
+                            : "Perfil desactivado en búsquedas"
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al actualizar configuración: " + e.getMessage()));
+        }
+    }
+
+    // También agregar un endpoint GET para obtener el estado actual
+    @GetMapping("/api/professionals/searchable-status")
+    public ResponseEntity<?> getSearchableStatus(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            String email = userDetails.getUsername();
+
+            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
+
+            if (professionalOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Profesional no encontrado"));
+            }
+
+            Professional professional = professionalOpt.get();
+
+            return ResponseEntity.ok(Map.of("searchable", professional.getSearchable()));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al obtener estado: " + e.getMessage()));
+        }
     }
 }

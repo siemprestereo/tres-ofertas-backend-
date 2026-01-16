@@ -46,6 +46,9 @@ public class Professional extends AppUser {
     @Column
     private LocalDate lastWorkplaceChangeDate;
 
+    @Column(name = "searchable", nullable = false)
+    private Boolean searchable = false;
+
     @Override
     public String getUserType() {
         return "PROFESSIONAL";
