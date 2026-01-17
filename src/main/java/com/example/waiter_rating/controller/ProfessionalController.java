@@ -101,7 +101,6 @@ public class ProfessionalController {
         try {
             String email = userDetails.getUsername();
 
-            // Buscar el profesional por email
             Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
 
             if (professionalOpt.isEmpty()) {
@@ -111,13 +110,13 @@ public class ProfessionalController {
 
             Professional professional = professionalOpt.get();
 
-            // Toggle del campo searchable
-            professional.setSearchable(!professional.getSearchable());
+            // ✅ Manejar NULL correctamente
+            Boolean currentValue = professional.getSearchable();
+            Boolean newValue = (currentValue == null || !currentValue) ? true : false;
+            professional.setSearchable(newValue);
 
-            // Guardar cambios
             professionalRepo.save(professional);
 
-            // Retornar estado actualizado
             return ResponseEntity.ok(Map.of(
                     "searchable", professional.getSearchable(),
                     "message", professional.getSearchable()
@@ -146,7 +145,9 @@ public class ProfessionalController {
 
             Professional professional = professionalOpt.get();
 
-            return ResponseEntity.ok(Map.of("searchable", professional.getSearchable()));
+            // ✅ Devolver false si es NULL
+            Boolean searchable = professional.getSearchable();
+            return ResponseEntity.ok(Map.of("searchable", searchable != null ? searchable : false));
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
