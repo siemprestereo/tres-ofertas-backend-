@@ -37,62 +37,9 @@ public class ProfessionalController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /** Obtener professional por ID */
-    @GetMapping("/{id}")
-    public ResponseEntity<ProfessionalResponse> getById(@PathVariable Long id) {
-        return professionalService.getById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    /** Obtener professional por email */
-    @GetMapping("/email/{email}")
-    public ResponseEntity<ProfessionalResponse> getByEmail(@PathVariable String email) {
-        return professionalService.getByEmail(email)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    /** Listar todos los professionals */
-    @GetMapping
-    public ResponseEntity<List<ProfessionalResponse>> listAll(
-            @RequestParam(required = false) ProfessionType professionType) {
-
-        if (professionType != null) {
-            return ResponseEntity.ok(professionalService.listByProfessionType(professionType));
-        }
-        return ResponseEntity.ok(professionalService.listAll());
-    }
-
-    /** Actualizar datos del professional */
-    @PutMapping("/{id}")
-    public ResponseEntity<ProfessionalResponse> update(
-            @PathVariable Long id,
-            @Valid @RequestBody ProfessionalRequest request) {
-        ProfessionalResponse response = professionalService.update(id, request);
-        return ResponseEntity.ok(response);
-    }
-
-    /** Eliminar professional */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        professionalService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    /** Verificar si puede cambiar de lugar de trabajo */
-    @GetMapping("/{id}/can-change-workplace")
-    public ResponseEntity<Map<String, Boolean>> canChangeWorkplace(@PathVariable Long id) {
-        boolean canChange = professionalService.canChangeWorkplace(id);
-        return ResponseEntity.ok(Map.of("canChange", canChange));
-    }
-
-    /** Registrar un cambio de lugar de trabajo */
-    @PostMapping("/{id}/register-workplace-change")
-    public ResponseEntity<Map<String, String>> registerWorkplaceChange(@PathVariable Long id) {
-        professionalService.registerWorkplaceChange(id);
-        return ResponseEntity.ok(Map.of("message", "Cambio de lugar de trabajo registrado exitosamente"));
-    }
+    // ============================================
+    // ENDPOINTS CON RUTAS ESPECÍFICAS - PRIMERO
+    // ============================================
 
     /** Obtener estado searchable del usuario autenticado */
     @GetMapping("/me/searchable-status")
@@ -247,5 +194,66 @@ public class ProfessionalController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al actualizar configuración: " + e.getMessage()));
         }
+    }
+
+    /** Obtener professional por email */
+    @GetMapping("/email/{email}")
+    public ResponseEntity<ProfessionalResponse> getByEmail(@PathVariable String email) {
+        return professionalService.getByEmail(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /** Listar todos los professionals */
+    @GetMapping
+    public ResponseEntity<List<ProfessionalResponse>> listAll(
+            @RequestParam(required = false) ProfessionType professionType) {
+
+        if (professionType != null) {
+            return ResponseEntity.ok(professionalService.listByProfessionType(professionType));
+        }
+        return ResponseEntity.ok(professionalService.listAll());
+    }
+
+    // ============================================
+    // ENDPOINTS CON {id} - AL FINAL
+    // ============================================
+
+    /** Obtener professional por ID */
+    @GetMapping("/{id}")
+    public ResponseEntity<ProfessionalResponse> getById(@PathVariable Long id) {
+        return professionalService.getById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /** Actualizar datos del professional */
+    @PutMapping("/{id}")
+    public ResponseEntity<ProfessionalResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody ProfessionalRequest request) {
+        ProfessionalResponse response = professionalService.update(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /** Eliminar professional */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        professionalService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Verificar si puede cambiar de lugar de trabajo */
+    @GetMapping("/{id}/can-change-workplace")
+    public ResponseEntity<Map<String, Boolean>> canChangeWorkplace(@PathVariable Long id) {
+        boolean canChange = professionalService.canChangeWorkplace(id);
+        return ResponseEntity.ok(Map.of("canChange", canChange));
+    }
+
+    /** Registrar un cambio de lugar de trabajo */
+    @PostMapping("/{id}/register-workplace-change")
+    public ResponseEntity<Map<String, String>> registerWorkplaceChange(@PathVariable Long id) {
+        professionalService.registerWorkplaceChange(id);
+        return ResponseEntity.ok(Map.of("message", "Cambio de lugar de trabajo registrado exitosamente"));
     }
 }
