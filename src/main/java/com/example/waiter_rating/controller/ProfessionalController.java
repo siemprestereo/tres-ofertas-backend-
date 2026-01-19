@@ -94,11 +94,10 @@ public class ProfessionalController {
         return ResponseEntity.ok(Map.of("message", "Cambio de lugar de trabajo registrado exitosamente"));
     }
 
-    /** Obtener estado searchable (sin ID en path) */
-    @GetMapping("/searchable-status")
-    public ResponseEntity<?> getSearchableStatus() {
+    /** Obtener estado searchable del usuario autenticado */
+    @GetMapping("/me/searchable-status")
+    public ResponseEntity<?> getMySearchableStatus() {
         try {
-            // Obtener email del SecurityContext
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
             if (authentication == null || authentication.getPrincipal() == null) {
@@ -128,11 +127,89 @@ public class ProfessionalController {
         }
     }
 
-    /** Toggle searchable (sin ID en path) */
+    /** Actualizar estado searchable del usuario autenticado */
+    @PutMapping("/me/searchable")
+    public ResponseEntity<?> updateMySearchable(@RequestBody Map<String, Boolean> request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication == null || authentication.getPrincipal() == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "No autenticado"));
+            }
+
+            String email = authentication.getPrincipal().toString();
+            System.out.println("✅ Email obtenido: " + email);
+
+            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
+
+            if (professionalOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Profesional no encontrado"));
+            }
+
+            Professional professional = professionalOpt.get();
+
+            Boolean searchable = request.get("searchable");
+            if (searchable == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "El campo 'searchable' es requerido"));
+            }
+
+            professional.setSearchable(searchable);
+            professionalRepo.save(professional);
+
+            return ResponseEntity.ok(Map.of(
+                    "searchable", searchable,
+                    "message", searchable
+                            ? "Perfil visible en búsquedas"
+                            : "Perfil oculto de búsquedas"
+            ));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al actualizar: " + e.getMessage()));
+        }
+    }
+
+    /** Obtener estado searchable (sin ID en path) - LEGACY */
+    @GetMapping("/searchable-status")
+    public ResponseEntity<?> getSearchableStatus() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication == null || authentication.getPrincipal() == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "No autenticado"));
+            }
+
+            String email = authentication.getPrincipal().toString();
+            System.out.println("✅ Email obtenido: " + email);
+
+            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
+
+            if (professionalOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Profesional no encontrado"));
+            }
+
+            Professional professional = professionalOpt.get();
+            Boolean searchable = professional.getSearchable();
+
+            return ResponseEntity.ok(Map.of("searchable", searchable != null ? searchable : false));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al obtener estado: " + e.getMessage()));
+        }
+    }
+
+    /** Toggle searchable (sin ID en path) - LEGACY */
     @PutMapping("/toggle-searchable")
     public ResponseEntity<?> toggleSearchable() {
         try {
-            // Obtener email del SecurityContext
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
             if (authentication == null || authentication.getPrincipal() == null) {
@@ -169,95 +246,6 @@ public class ProfessionalController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al actualizar configuración: " + e.getMessage()));
-        }
-    }
-
-    /** Obtener estado searchable por ID (con validación de pertenencia) */
-    @GetMapping("/{id}/searchable-status")
-    public ResponseEntity<?> getSearchableStatusById(@PathVariable Long id) {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-            if (authentication == null || authentication.getPrincipal() == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "No autenticado"));
-            }
-
-            String email = authentication.getPrincipal().toString();
-            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
-
-            if (professionalOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "Profesional no encontrado"));
-            }
-
-            Professional professional = professionalOpt.get();
-
-            // Verificar que el profesional solo pueda ver su propio estado
-            if (!professional.getId().equals(id)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "No autorizado"));
-            }
-
-            Boolean searchable = professional.getSearchable();
-            return ResponseEntity.ok(Map.of("searchable", searchable != null ? searchable : false));
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al obtener estado: " + e.getMessage()));
-        }
-    }
-
-    /** Actualizar estado searchable por ID (con validación de pertenencia) */
-    @PutMapping("/{id}/searchable")
-    public ResponseEntity<?> updateSearchableById(
-            @PathVariable Long id,
-            @RequestBody Map<String, Boolean> request) {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-            if (authentication == null || authentication.getPrincipal() == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "No autenticado"));
-            }
-
-            String email = authentication.getPrincipal().toString();
-            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
-
-            if (professionalOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "Profesional no encontrado"));
-            }
-
-            Professional professional = professionalOpt.get();
-
-            // Verificar que el profesional solo pueda actualizar su propio estado
-            if (!professional.getId().equals(id)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "No autorizado"));
-            }
-
-            Boolean searchable = request.get("searchable");
-            if (searchable == null) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "El campo 'searchable' es requerido"));
-            }
-
-            professional.setSearchable(searchable);
-            professionalRepo.save(professional);
-
-            return ResponseEntity.ok(Map.of(
-                    "searchable", searchable,
-                    "message", searchable
-                            ? "Perfil visible en búsquedas"
-                            : "Perfil oculto de búsquedas"
-            ));
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al actualizar: " + e.getMessage()));
         }
     }
 }
