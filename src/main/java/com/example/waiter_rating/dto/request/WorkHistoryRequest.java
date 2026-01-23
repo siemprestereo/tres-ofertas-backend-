@@ -11,8 +11,7 @@ public class WorkHistoryRequest {
 
     private Long businessId; // Opcional: puede ser null si es texto libre
 
-    @NotBlank(message = "El nombre del lugar de trabajo es obligatorio")  // ← AGREGAR
-    private String businessName;
+    private String businessName; // ← Quité @NotBlank porque los freelance pueden tener esto vacío
 
     @NotBlank(message = "El puesto es obligatorio")
     private String position;
@@ -26,6 +25,7 @@ public class WorkHistoryRequest {
 
     private String description;
 
-
     private Boolean isFreelance = false;
+
+    private Boolean isActive = false; // ← AGREGAR ESTE CAMPO
 }

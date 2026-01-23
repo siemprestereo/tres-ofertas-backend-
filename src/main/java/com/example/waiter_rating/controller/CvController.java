@@ -151,7 +151,7 @@ public class CvController {
 
                 for (Map<String, Object> exp : workExperiences) {
                     WorkHistoryRequest req = new WorkHistoryRequest();
-                    req.setBusinessName((String) exp.get("company"));
+                    req.setBusinessName((String) exp.get("businessName"));
                     req.setPosition((String) exp.get("position"));
 
                     // Parsear fechas de String a LocalDate
@@ -164,17 +164,23 @@ public class CvController {
                             java.time.LocalDate.parse(endDateStr) : null);
 
                     req.setDescription((String) exp.get("description"));
-                    req.setReferenceContact((String) exp.get("referenceName"));
+                    req.setReferenceContact((String) exp.get("referenceContact"));
                     req.setIsFreelance((Boolean) exp.getOrDefault("isFreelance", false));
+                    req.setIsActive((Boolean) exp.getOrDefault("isActive", false));
 
                     Object workHistoryIdObj = exp.get("workHistoryId");
                     if (workHistoryIdObj != null) {
                         Long workHistoryId = ((Number) workHistoryIdObj).longValue();
                         System.out.println("  ✏️ Actualizando work history ID: " + workHistoryId);
                         workHistoryService.updateWorkHistory(userId, workHistoryId, req);
-                    } else if (req.getBusinessName() != null && !req.getBusinessName().isEmpty()) {
-                        System.out.println("  ➕ Creando nueva work history");
+                    } else if (req.getPosition() != null && !req.getPosition().isEmpty()) {
+                        // Validar position en vez de businessName
+                        // Los freelance pueden tener businessName vacío pero SIEMPRE deben tener position
+                        System.out.println("  ➕ Creando nueva work history: " + req.getPosition() +
+                                (req.getIsFreelance() ? " (Freelance)" : ""));
                         workHistoryService.addWorkHistory(userId, req);
+                    } else {
+                        System.out.println("  ⚠️ Trabajo ignorado: sin posición");
                     }
                 }
             }
@@ -444,4 +450,5 @@ public class CvController {
 
         return item;
     }
+
 }
