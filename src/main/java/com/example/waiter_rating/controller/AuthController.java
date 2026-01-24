@@ -316,62 +316,41 @@ public class AuthController {
 
     @PutMapping("/update-profile")
     public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> updates, HttpServletRequest request) {
-        // Obtener userId y userType del JWT (guardados por el filtro)
         Long userId = (Long) request.getAttribute("userId");
         String userType = (String) request.getAttribute("userType");
 
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "No autenticado"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "No autenticado"));
         }
 
-        if (!"PROFESSIONAL".equals(userType)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Solo profesionales pueden actualizar su perfil"));
+        // --- LÓGICA PARA PROFESIONAL ---
+        if ("PROFESSIONAL".equals(userType)) {
+            Optional<Professional> professionalOpt = professionalRepository.findById(userId);
+            if (professionalOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Profesional no encontrado"));
+
+            Professional p = professionalOpt.get();
+            if (updates.containsKey("phone")) p.setPhone(updates.get("phone"));
+            if (updates.containsKey("location")) p.setLocation(updates.get("location"));
+            if (updates.containsKey("professionalTitle")) p.setProfessionalTitle(updates.get("professionalTitle"));
+
+            professionalRepository.save(p);
+            return ResponseEntity.ok(p); // Retornamos el objeto actualizado
         }
 
-        Optional<Professional> professionalOpt = professionalRepository.findById(userId);
+        // --- LÓGICA PARA CLIENTE ---
+        else if ("CLIENT".equals(userType)) {
+            Optional<Client> clientOpt = clientRepo.findById(userId);
+            if (clientOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Cliente no encontrado"));
 
-        if (professionalOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Profesional no encontrado"));
+            Client c = clientOpt.get();
+            if (updates.containsKey("phone")) c.setPhone(updates.get("phone"));
+            if (updates.containsKey("location")) c.setLocation(updates.get("location"));
+
+            clientRepo.save(c);
+            return ResponseEntity.ok(c); // Retornamos el objeto actualizado
         }
 
-        Professional professional = professionalOpt.get();
-
-        // Actualizar campos opcionales
-        if (updates.containsKey("phone")) {
-            professional.setPhone(updates.get("phone"));
-        }
-        if (updates.containsKey("location")) {
-            professional.setLocation(updates.get("location"));
-        }
-        if (updates.containsKey("professionalTitle")) {
-            professional.setProfessionalTitle(updates.get("professionalTitle"));
-        }
-        // ← AGREGAR ESTA SECCIÓN:
-        if (updates.containsKey("professionType")) {
-            String profType = updates.get("professionType");
-            if (profType != null && !profType.isEmpty()) {
-                try {
-                    ProfessionType professionType = ProfessionType.valueOf(profType);
-                    professional.setProfessionType(professionType);
-                } catch (IllegalArgumentException e) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of("error", "Tipo de profesión inválido: " + profType));
-                }
-            }
-        }
-
-        professionalRepository.save(professional);
-
-        return ResponseEntity.ok(Map.of(
-                "message", "Perfil actualizado correctamente",
-                "phone", professional.getPhone() != null ? professional.getPhone() : "",
-                "location", professional.getLocation() != null ? professional.getLocation() : "",
-                "professionalTitle", professional.getProfessionalTitle() != null ? professional.getProfessionalTitle() : "",
-                "professionType", professional.getProfessionType() != null ? professional.getProfessionType().name() : ""  // ← AGREGAR ESTA LÍNEA
-        ));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Tipo de usuario no válido"));
     }
 
     @PostMapping("/upload-photo")
