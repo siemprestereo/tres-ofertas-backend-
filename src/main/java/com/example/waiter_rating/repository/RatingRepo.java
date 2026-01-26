@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -51,6 +52,11 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
 
     long countByWorkHistoryId(Long workHistoryId);
 
+    List<Rating> findByProfessionalIdAndCreatedAtBetween(
+            Long professionalId,
+            LocalDateTime start,
+            LocalDateTime end
+    );
 }
 
 
