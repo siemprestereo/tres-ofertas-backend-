@@ -3,6 +3,7 @@ package com.example.waiter_rating.dto.response;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -21,9 +22,6 @@ public class FavoriteProfessionalResponse {
     private LocalDateTime savedAt;
     private String notes;
 
-    // Estadísticas adicionales (opcionales)
-    private Double avgScoreLastMonth;
-    private Integer ratingsLastMonth;
-    private Double avgScoreLastThreeMonths;
-    private Integer ratingsLastThreeMonths;
+
+    private List<WorkHistoryResponse> workHistory;
 }

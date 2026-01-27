@@ -57,6 +57,13 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
             LocalDateTime start,
             LocalDateTime end
     );
+
+    // Calificaciones por workHistoryId en un período de tiempo
+    List<Rating> findByWorkHistoryIdAndCreatedAtBetween(
+            Long workHistoryId,
+            LocalDateTime start,
+            LocalDateTime end
+    );
 }
 
 

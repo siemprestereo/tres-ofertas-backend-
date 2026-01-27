@@ -1,10 +1,12 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.FavoriteProfessionalResponse;
+import com.example.waiter_rating.dto.response.WorkHistoryResponse;
 import com.example.waiter_rating.model.Client;
 import com.example.waiter_rating.model.FavoriteProfessional;
 import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.model.Rating;
+import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.ClientRepo;
 import com.example.waiter_rating.repository.FavoriteProfessionalRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;
@@ -135,6 +137,11 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
     private FavoriteProfessionalResponse toResponse(FavoriteProfessional favorite) {
         Professional prof = favorite.getProfessional();
 
+        // Mapear workHistory sin filtro de fecha
+        List<WorkHistoryResponse> workHistoryList = prof.getWorkHistory().stream()
+                .map(this::mapWorkHistoryToResponse)
+                .collect(Collectors.toList());
+
         return FavoriteProfessionalResponse.builder()
                 .favoriteId(favorite.getId())
                 .professionalId(prof.getId())
@@ -146,6 +153,7 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .totalRatings(prof.getTotalRatings())
                 .savedAt(favorite.getSavedAt())
                 .notes(favorite.getNotes())
+                .workHistory(workHistoryList)
                 .build();
     }
 
@@ -156,20 +164,25 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
 
         Professional prof = favorite.getProfessional();
 
-        // Calcular estadísticas en el período
+        // Calcular estadísticas generales en el período
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-        List<Rating> ratingsInPeriod = ratingRepo.findByProfessionalIdAndCreatedAtBetween(
+        List<Rating> allRatingsInPeriod = ratingRepo.findByProfessionalIdAndCreatedAtBetween(
                 prof.getId(),
                 startDateTime,
                 endDateTime
         );
 
-        Double avgScore = ratingsInPeriod.stream()
+        Double generalAvgScore = allRatingsInPeriod.stream()
                 .mapToDouble(Rating::getScore)
                 .average()
                 .orElse(0.0);
+
+        // Mapear workHistory con estadísticas filtradas por período
+        List<WorkHistoryResponse> workHistoryList = prof.getWorkHistory().stream()
+                .map(work -> mapWorkHistoryWithStats(work, startDateTime, endDateTime))
+                .collect(Collectors.toList());
 
         return FavoriteProfessionalResponse.builder()
                 .favoriteId(favorite.getId())
@@ -178,10 +191,74 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .professionalEmail(prof.getEmail())
                 .professionType(prof.getProfessionType().toString())
                 .profilePicture(prof.getProfilePicture())
-                .reputationScore(avgScore)
-                .totalRatings(ratingsInPeriod.size())
+                .reputationScore(Math.round(generalAvgScore * 10.0) / 10.0)
+                .totalRatings(allRatingsInPeriod.size())
                 .savedAt(favorite.getSavedAt())
                 .notes(favorite.getNotes())
+                .workHistory(workHistoryList)
                 .build();
+    }
+
+    // Mapper: WorkHistory → WorkHistoryResponse (sin estadísticas de período)
+    private WorkHistoryResponse mapWorkHistoryToResponse(WorkHistory work) {
+        WorkHistoryResponse response = new WorkHistoryResponse();
+        response.setId(work.getId());
+        response.setBusinessId(work.getBusiness() != null ? work.getBusiness().getId() : null);
+        response.setBusinessName(work.getBusiness() != null ? work.getBusiness().getName() : work.getBusinessName());
+        response.setBusinessType(work.getBusiness() != null ? work.getBusiness().getBusinessType() : null); // ✅ CORREGIDO
+        response.setPosition(work.getPosition());
+        response.setStartDate(work.getStartDate() != null ? work.getStartDate().toString() : null);
+        response.setEndDate(work.getEndDate() != null ? work.getEndDate().toString() : null);
+        response.setIsActive(work.getIsActive());
+        response.setIsFreelance(work.getIsFreelance());
+        response.setReferenceContact(work.getReferenceContact());
+
+        // Calcular estadísticas totales (sin filtro de fecha)
+        List<Rating> allWorkRatings = ratingRepo.findByWorkHistoryId(work.getId());
+        Double avgScore = allWorkRatings.stream()
+                .mapToDouble(Rating::getScore)
+                .average()
+                .orElse(0.0);
+
+        response.setRatingsCountInPeriod(allWorkRatings.size());
+        response.setAvgScoreInPeriod(Math.round(avgScore * 10.0) / 10.0);
+
+        return response;
+    }
+
+    // Mapper: WorkHistory → WorkHistoryResponse (con estadísticas filtradas)
+    private WorkHistoryResponse mapWorkHistoryWithStats(
+            WorkHistory work,
+            LocalDateTime startDateTime,
+            LocalDateTime endDateTime) {
+
+        WorkHistoryResponse response = new WorkHistoryResponse();
+        response.setId(work.getId());
+        response.setBusinessId(work.getBusiness() != null ? work.getBusiness().getId() : null);
+        response.setBusinessName(work.getBusiness() != null ? work.getBusiness().getName() : work.getBusinessName());
+        response.setBusinessType(work.getBusiness() != null ? work.getBusiness().getBusinessType() : null); // ✅ CORREGIDO
+        response.setPosition(work.getPosition());
+        response.setStartDate(work.getStartDate() != null ? work.getStartDate().toString() : null);
+        response.setEndDate(work.getEndDate() != null ? work.getEndDate().toString() : null);
+        response.setIsActive(work.getIsActive());
+        response.setIsFreelance(work.getIsFreelance());
+        response.setReferenceContact(work.getReferenceContact());
+
+        // Calcular estadísticas en el período filtrado
+        List<Rating> workRatingsInPeriod = ratingRepo.findByWorkHistoryIdAndCreatedAtBetween(
+                work.getId(),
+                startDateTime,
+                endDateTime
+        );
+
+        Double avgScore = workRatingsInPeriod.stream()
+                .mapToDouble(Rating::getScore)
+                .average()
+                .orElse(0.0);
+
+        response.setRatingsCountInPeriod(workRatingsInPeriod.size());
+        response.setAvgScoreInPeriod(Math.round(avgScore * 10.0) / 10.0);
+
+        return response;
     }
 }

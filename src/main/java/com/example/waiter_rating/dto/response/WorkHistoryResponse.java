@@ -15,4 +15,8 @@ public class WorkHistoryResponse {
     private Boolean isActive;
     private String referenceContact;
     private Boolean isFreelance = false;
+
+
+    private Integer ratingsCountInPeriod;
+    private Double avgScoreInPeriod;
 }
