@@ -1,92 +1,91 @@
 package com.example.waiter_rating.service.impl;
 
-import com.example.waiter_rating.dto.request.AppUserRequest;
 import com.example.waiter_rating.dto.response.AppUserResponse;
 import com.example.waiter_rating.model.AppUser;
-import com.example.waiter_rating.model.Client;
-import com.example.waiter_rating.model.Professional;
-import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.service.AppUserService;
-
+import com.example.waiter_rating.service.JwtService;
+import io.jsonwebtoken.Claims;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class AppUserServiceImpl implements AppUserService {
 
     private final AppUserRepo repo;
+    private final JwtService jwtService;
 
-    public AppUserServiceImpl(AppUserRepo repo) {
+    @Autowired
+    public AppUserServiceImpl(AppUserRepo repo, JwtService jwtService) {
         this.repo = repo;
+        this.jwtService = jwtService;
     }
 
     @Override
-    @Transactional
-    public AppUserResponse create(AppUserRequest request) {
-        AppUser user;
-
-        // Decidir si crear Client o Professional según el userType del request
-        if ("PROFESSIONAL".equalsIgnoreCase(request.getUserType())) {
-            Professional professional = new Professional();
-            professional.setName(request.getName());
-            professional.setEmail(request.getEmail());
-            professional.setProfilePicture(request.getProfilePicture());
-            professional.setEmailVerified(false);
-            professional.setMonthlyWorkplaceChanges(0);
-
-            // Establecer profession type (por defecto WAITER si no se especifica)
-            professional.setProfessionType(
-                    request.getProfessionType() != null
-                            ? request.getProfessionType()
-                            : ProfessionType.WAITER
-            );
-
-            user = professional;
-        } else {
-            // Por defecto crear Client
-            Client client = new Client();
-            client.setName(request.getName());
-            client.setEmail(request.getEmail());
-            client.setProfilePicture(request.getProfilePicture());
-            client.setEmailVerified(false);
-            user = client;
-        }
-
-        user = repo.save(user);
-        return toResponse(user);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public AppUserResponse getById(Long id) {
-        AppUser u = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + id));
-        return toResponse(u);
+        AppUser user = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
+
+        return mapToResponse(user);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<AppUserResponse> listAll() {
-        return repo.findAll().stream().map(this::toResponse).toList();
+        List<AppUser> users = repo.findAll();
+        return users.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
-    // ---------- Mapping helper ----------
-    private AppUserResponse toResponse(AppUser u) {
-        AppUserResponse r = new AppUserResponse();
-        r.setId(u.getId());
-        r.setName(u.getName());
-        r.setEmail(u.getEmail());
-        r.setUserType(u.getUserType()); // Usa el método abstracto
-        r.setProfilePicture(u.getProfilePicture());
+    @Override
+    public Map<String, Object> checkUserRoles(String authHeader) {
+        try {
+            // Extraer token
+            String token = authHeader.substring(7); // Quitar "Bearer "
 
-        // Si es Professional, incluir professionType
-        if (u instanceof Professional) {
-            r.setProfessionType(((Professional) u).getProfessionType());
+            // Usar validateToken para obtener claims
+            Claims claims = jwtService.validateToken(token);
+            String email = claims.getSubject(); // El email está en el subject
+
+            // Buscar usuario
+            AppUser user = repo.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            // Preparar respuesta
+            Map<String, Object> response = new HashMap<>();
+            response.put("hasClientRole", user.getUserType().equals("CLIENT"));
+            response.put("hasProfessionalRole", user.getUserType().equals("PROFESSIONAL"));
+            response.put("activeRole", user.getActiveRole().name());
+            response.put("canSwitchRole", user.canSwitchRole());
+
+            if (!user.canSwitchRole()) {
+                response.put("nextAllowedSwitchDate", user.getNextAllowedRoleSwitchDate());
+            }
+
+            return response;
+        } catch (Exception e) {
+            throw new RuntimeException("Error verificando roles: " + e.getMessage());
         }
+    }
 
-        return r;
+    // Método helper para mapear AppUser a AppUserResponse
+    private AppUserResponse mapToResponse(AppUser user) {
+        AppUserResponse response = new AppUserResponse();
+        response.setId(user.getId());
+        response.setName(user.getName());
+        response.setEmail(user.getEmail());
+        response.setPhone(user.getPhone());
+        response.setLocation(user.getLocation());
+        response.setProfessionalTitle(user.getProfessionalTitle());
+        response.setUserType(user.getUserType());
+        response.setActiveRole(user.getActiveRole().name());
+        response.setCreatedAt(user.getCreatedAt());
+        response.setUpdatedAt(user.getUpdatedAt());
+        return response;
     }
 }

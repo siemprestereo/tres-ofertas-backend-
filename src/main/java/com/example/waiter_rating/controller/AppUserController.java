@@ -1,13 +1,12 @@
 package com.example.waiter_rating.controller;
 
-import com.example.waiter_rating.dto.request.AppUserRequest;
 import com.example.waiter_rating.dto.response.AppUserResponse;
 import com.example.waiter_rating.service.AppUserService;
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -17,13 +16,6 @@ public class AppUserController {
 
     public AppUserController(AppUserService userService) {
         this.userService = userService;
-    }
-
-    /** Crear usuario (redirige a Client o Professional según userType) */
-    @PostMapping
-    public ResponseEntity<AppUserResponse> create(@Valid @RequestBody AppUserRequest request) {
-        AppUserResponse response = userService.create(request);
-        return ResponseEntity.ok(response);
     }
 
     /** Obtener usuario por ID (genérico - puede ser Client o Professional) */
@@ -37,5 +29,12 @@ public class AppUserController {
     @GetMapping
     public ResponseEntity<List<AppUserResponse>> listAll() {
         return ResponseEntity.ok(userService.listAll());
+    }
+
+    /** Verificar roles del usuario autenticado */
+    @GetMapping("/me/roles")
+    public ResponseEntity<Map<String, Object>> checkMyRoles(@RequestHeader("Authorization") String authHeader) {
+        Map<String, Object> roles = userService.checkUserRoles(authHeader);
+        return ResponseEntity.ok(roles);
     }
 }
