@@ -3,6 +3,8 @@ package com.example.waiter_rating.service.impl;
 import com.example.waiter_rating.dto.response.AppUserResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.repository.AppUserRepo;
+import com.example.waiter_rating.repository.ClientRepo;
+import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.JwtService;
 import io.jsonwebtoken.Claims;
@@ -20,10 +22,15 @@ public class AppUserServiceImpl implements AppUserService {
     private final AppUserRepo repo;
     private final JwtService jwtService;
 
+    private final ProfessionalRepo professionalRepo;
+    private final ClientRepo clientRepo;
+
     @Autowired
-    public AppUserServiceImpl(AppUserRepo repo, JwtService jwtService) {
+    public AppUserServiceImpl(AppUserRepo repo, JwtService jwtService, ProfessionalRepo professionalRepo, ClientRepo clientRepo) {
         this.repo = repo;
         this.jwtService = jwtService;
+        this.professionalRepo = professionalRepo;
+        this.clientRepo = clientRepo;
     }
 
     @Override
@@ -46,32 +53,29 @@ public class AppUserServiceImpl implements AppUserService {
     public Map<String, Object> checkUserRoles(String authHeader) {
         try {
             System.out.println("=== checkUserRoles START ===");
-            System.out.println("authHeader: " + authHeader);
 
-            // Extraer token
-            String token = authHeader.substring(7); // Quitar "Bearer "
-            System.out.println("Token extraído: " + token.substring(0, Math.min(20, token.length())) + "...");
-
-            // Usar validateToken para obtener claims
-            System.out.println("Validando token...");
+            String token = authHeader.substring(7);
             Claims claims = jwtService.validateToken(token);
-            System.out.println("Token validado exitosamente");
-
-            String email = claims.getSubject(); // El email está en el subject
+            String email = claims.getSubject();
             System.out.println("Email del token: " + email);
 
-            // Buscar usuario
-            System.out.println("Buscando usuario en DB...");
+            // ✅ NUEVO: Buscar si existen perfiles de CLIENT y PROFESSIONAL
+            boolean hasClientProfile = clientRepo.findByEmail(email).isPresent();
+            boolean hasProfessionalProfile = professionalRepo.findByEmail(email).isPresent();
+
+            System.out.println("hasClientProfile: " + hasClientProfile);
+            System.out.println("hasProfessionalProfile: " + hasProfessionalProfile);
+
+            // Buscar usuario para obtener activeRole
             AppUser user = repo.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-            System.out.println("Usuario encontrado: " + user.getId());
-            System.out.println("getUserType(): " + user.getUserType());
-            System.out.println("getActiveRole(): " + user.getActiveRole());
+
+            System.out.println("activeRole: " + user.getActiveRole());
 
             // Preparar respuesta
             Map<String, Object> response = new HashMap<>();
-            response.put("hasClientRole", user.getUserType().equals("CLIENT"));
-            response.put("hasProfessionalRole", user.getUserType().equals("PROFESSIONAL"));
+            response.put("hasClientRole", hasClientProfile);
+            response.put("hasProfessionalRole", hasProfessionalProfile);
             response.put("activeRole", user.getActiveRole().name());
             response.put("canSwitchRole", user.canSwitchRole());
 
@@ -84,8 +88,6 @@ public class AppUserServiceImpl implements AppUserService {
             return response;
         } catch (Exception e) {
             System.err.println("=== checkUserRoles ERROR ===");
-            System.err.println("Error class: " + e.getClass().getName());
-            System.err.println("Error message: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Error verificando roles: " + e.getMessage());
         }
