@@ -30,8 +30,6 @@ CREATE TABLE app_users_new (
     INDEX idx_profession_type (profession_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- PASO 2: Migrar datos de Professionals
--- ============================================================================
 INSERT INTO app_users_new (
     id, name, email, phone, location, professional_title, password,
     profile_picture, email_verified, provider, provider_id,
@@ -66,8 +64,6 @@ FROM app_users u
 INNER JOIN professionals p ON u.id = p.id
 WHERE u.user_type = 'PROFESSIONAL';
 
--- PASO 3: Migrar datos de Clients
--- ============================================================================
 INSERT INTO app_users_new (
     id, name, email, phone, location, professional_title, password,
     profile_picture, email_verified, provider, provider_id,
