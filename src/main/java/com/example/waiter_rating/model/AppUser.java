@@ -211,9 +211,4 @@ public class AppUser {
         return lastRoleSwitchAt.plusMonths(6);
     }
 
-    // Enum para los roles
-    public enum UserRole {
-        CLIENT,
-        PROFESSIONAL
-    }
 }
