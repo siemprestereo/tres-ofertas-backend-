@@ -1,7 +1,6 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.model.WorkHistory;
-import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
 import com.example.waiter_rating.service.PdfService;
 import com.itextpdf.io.font.constants.StandardFonts;

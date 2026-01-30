@@ -5,8 +5,6 @@ import com.example.waiter_rating.dto.response.ClientResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.repository.AppUserRepo;
-import com.example.waiter_rating.repository.ClientRepo;
-import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.service.ClientService;
 import com.example.waiter_rating.service.CvService;
 import org.springframework.stereotype.Service;

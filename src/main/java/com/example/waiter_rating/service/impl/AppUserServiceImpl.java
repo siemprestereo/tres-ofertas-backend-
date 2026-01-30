@@ -3,8 +3,6 @@ package com.example.waiter_rating.service.impl;
 import com.example.waiter_rating.dto.response.AppUserResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.repository.AppUserRepo;
-import com.example.waiter_rating.repository.ClientRepo;
-import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.JwtService;
 import io.jsonwebtoken.Claims;

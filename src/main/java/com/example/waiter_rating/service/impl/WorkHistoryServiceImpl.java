@@ -5,7 +5,6 @@ import com.example.waiter_rating.model.Business;
 import com.example.waiter_rating.model.BusinessType;
 import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.BusinessRepo;
-import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
 import com.example.waiter_rating.service.WorkHistoryService;

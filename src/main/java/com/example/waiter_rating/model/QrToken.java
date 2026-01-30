@@ -21,10 +21,10 @@ public class QrToken {
     @Column(nullable = false, unique = true, length = 100)
     private String code; // Código único del QR
 
-    // Relación con Professional
+    // Relación con AppUser (Professional)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "professional_id", nullable = false)
-    private Professional professional;
+    private AppUser professional;
 
     // Business donde se generó el QR (contexto del servicio)
     @ManyToOne(fetch = FetchType.LAZY)

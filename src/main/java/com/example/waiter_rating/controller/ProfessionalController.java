@@ -3,7 +3,6 @@ package com.example.waiter_rating.controller;
 import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.ProfessionType;
-import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

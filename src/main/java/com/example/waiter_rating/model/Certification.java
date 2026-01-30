@@ -13,7 +13,7 @@ public class Certification {
 
     @ManyToOne
     @JoinColumn(name = "professional_id", nullable = false)
-    private Professional professional;
+    private AppUser professional;
 
     @Column(name = "name", length = 200)
     private String name;
@@ -36,11 +36,11 @@ public class Certification {
         this.id = id;
     }
 
-    public Professional getProfessional() {
+    public AppUser getProfessional() {
         return professional;
     }
 
-    public void setProfessional(Professional professional) {
+    public void setProfessional(AppUser professional) {
         this.professional = professional;
     }
 

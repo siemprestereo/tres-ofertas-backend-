@@ -4,7 +4,6 @@ import com.example.waiter_rating.dto.response.QrCreateResponse;
 import com.example.waiter_rating.model.QrToken;
 import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.QrTokenRepo;
-import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
 import com.example.waiter_rating.service.QrService;
 import com.example.waiter_rating.util.QrGenerator;
