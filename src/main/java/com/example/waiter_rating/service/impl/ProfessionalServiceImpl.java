@@ -4,11 +4,15 @@ import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.ProfessionType;
+import com.example.waiter_rating.model.UserRole;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.ProfessionalService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -16,11 +20,11 @@ import java.util.stream.Collectors;
 @Service
 public class ProfessionalServiceImpl implements ProfessionalService {
 
-    private final ProfessionalRepo professionalRepo;
+    private final AppUserRepo appUserRepo;
     private final RatingRepo ratingRepo;
 
-    public ProfessionalServiceImpl(ProfessionalRepo professionalRepo, RatingRepo ratingRepo) {
-        this.professionalRepo = professionalRepo;
+    public ProfessionalServiceImpl(AppUserRepo appUserRepo, RatingRepo ratingRepo) {
+        this.appUserRepo = appUserRepo;
         this.ratingRepo = ratingRepo;
     }
 
@@ -28,42 +32,52 @@ public class ProfessionalServiceImpl implements ProfessionalService {
     @Transactional
     public ProfessionalResponse create(ProfessionalRequest request) {
         // Verificar que no exista el email
-        if (professionalRepo.findByEmail(request.getEmail()).isPresent()) {
+        if (appUserRepo.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Ya existe un usuario con ese email");
         }
 
-        Professional professional = new Professional();
-        professional.setName(request.getName());
-        professional.setEmail(request.getEmail());
-        professional.setPassword(request.getPassword());
-        professional.setProfilePicture(request.getProfilePicture());
-        professional.setProvider(request.getProvider() != null ? request.getProvider() : "LOCAL");
-        professional.setProviderId(request.getProviderId());
-        professional.setEmailVerified(false);
-        professional.setProfessionType(request.getProfessionType());
-        professional.setMonthlyWorkplaceChanges(0);
-        professional.setActiveRole(AppUser.UserRole.PROFESSIONAL); // ✅ AGREGADO
+        AppUser professional = AppUser.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .password(request.getPassword())
+                .profilePicture(request.getProfilePicture())
+                .provider(request.getProvider() != null ? request.getProvider() : "LOCAL")
+                .providerId(request.getProviderId())
+                .emailVerified(false)
+                .activeRole(UserRole.PROFESSIONAL)
+                .professionType(request.getProfessionType())
+                .professionalTitle(request.getProfessionType().name())
+                .reputationScore(0.0)
+                .totalRatings(0)
+                .monthlyWorkplaceChanges(0)
+                .searchable(true)
+                .build();
 
-        professional = professionalRepo.save(professional);
+        professional = appUserRepo.save(professional);
         return toResponse(professional);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<ProfessionalResponse> getById(Long id) {
-        return professionalRepo.findById(id).map(this::toResponse);
+        return appUserRepo.findById(id)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
+                .map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<ProfessionalResponse> getByEmail(String email) {
-        return professionalRepo.findByEmail(email).map(this::toResponse);
+        return appUserRepo.findByEmail(email)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
+                .map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ProfessionalResponse> listAll() {
-        return professionalRepo.findAll().stream()
+        return appUserRepo.findAll().stream()
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -71,7 +85,8 @@ public class ProfessionalServiceImpl implements ProfessionalService {
     @Override
     @Transactional(readOnly = true)
     public List<ProfessionalResponse> listByProfessionType(ProfessionType professionType) {
-        return professionalRepo.findAll().stream()
+        return appUserRepo.findAll().stream()
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .filter(p -> p.getProfessionType() == professionType)
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -80,83 +95,115 @@ public class ProfessionalServiceImpl implements ProfessionalService {
     @Override
     @Transactional
     public ProfessionalResponse update(Long id, ProfessionalRequest request) {
-        Professional professional = professionalRepo.findById(id)
+        AppUser professional = appUserRepo.findById(id)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado"));
 
         professional.setName(request.getName());
         professional.setProfilePicture(request.getProfilePicture());
-        // Permitir cambiar profession type si es necesario
+
         if (request.getProfessionType() != null) {
             professional.setProfessionType(request.getProfessionType());
         }
-        // No permitir cambiar email ni password aquí
 
-        professional = professionalRepo.save(professional);
+        professional = appUserRepo.save(professional);
         return toResponse(professional);
     }
 
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!professionalRepo.existsById(id)) {
-            throw new IllegalArgumentException("Professional no encontrado");
-        }
-        professionalRepo.deleteById(id);
+        AppUser user = appUserRepo.findById(id)
+                .filter(u -> UserRole.PROFESSIONAL.equals(u.getActiveRole()))
+                .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado"));
+
+        appUserRepo.deleteById(id);
     }
 
     @Override
     @Transactional(readOnly = true)
     public boolean canChangeWorkplace(Long professionalId) {
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado"));
-        return professional.canChangeWorkplace();
+
+        return canChangeWorkplace(professional);
+    }
+
+    private boolean canChangeWorkplace(AppUser professional) {
+        if (professional.getLastWorkplaceChangeDate() == null) {
+            return true;
+        }
+
+        YearMonth lastChangeMonth = YearMonth.from(professional.getLastWorkplaceChangeDate());
+        YearMonth currentMonth = YearMonth.now();
+
+        if (!lastChangeMonth.equals(currentMonth)) {
+            return true;
+        }
+
+        return professional.getMonthlyWorkplaceChanges() < 2;
     }
 
     @Override
     @Transactional
     public void registerWorkplaceChange(Long professionalId) {
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado"));
 
-        if (!professional.canChangeWorkplace()) {
+        if (!canChangeWorkplace(professional)) {
             throw new IllegalStateException("Has alcanzado el límite de 2 cambios de lugar de trabajo por mes");
         }
 
-        professional.registerWorkplaceChange();
-        professionalRepo.save(professional);
+        LocalDate now = LocalDate.now();
+        LocalDate lastChange = professional.getLastWorkplaceChangeDate();
+
+        if (lastChange == null || YearMonth.from(lastChange).isBefore(YearMonth.from(now))) {
+            professional.setMonthlyWorkplaceChanges(1);
+        } else {
+            professional.setMonthlyWorkplaceChanges(professional.getMonthlyWorkplaceChanges() + 1);
+        }
+
+        professional.setLastWorkplaceChangeDate(now);
+        appUserRepo.save(professional);
     }
 
     @Override
-    public Professional findByEmail(String email) {
-        return professionalRepo.findByEmail(email).orElse(null);
+    public AppUser findByEmail(String email) {
+        return appUserRepo.findByEmail(email)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
+                .orElse(null);
     }
 
-    // ========== NUEVO MÉTODO PARA OAUTH ==========
     @Override
     @Transactional
-    public Professional findOrCreateFromGoogle(String email, String name, String googleId, Boolean emailVerified) {
-        Optional<Professional> existingProfessional = professionalRepo.findByEmail(email);
+    public AppUser findOrCreateFromGoogle(String email, String name, String googleId, Boolean emailVerified) {
+        Optional<AppUser> existingUser = appUserRepo.findByEmail(email);
 
-        if (existingProfessional.isPresent()) {
-            System.out.println("👤 Profesional existente encontrado: " + email);
-            return existingProfessional.get();
+        if (existingUser.isPresent()) {
+            System.out.println("👤 Usuario existente encontrado: " + email);
+            return existingUser.get();
         }
 
         System.out.println("➕ Creando nuevo profesional desde Google: " + email);
-        Professional newProfessional = new Professional();
-        newProfessional.setName(name);
-        newProfessional.setEmail(email);
-        newProfessional.setProvider("GOOGLE");
-        newProfessional.setProviderId(googleId);
-        newProfessional.setEmailVerified(emailVerified != null ? emailVerified : false);
-        newProfessional.setMonthlyWorkplaceChanges(0);
-        newProfessional.setActiveRole(AppUser.UserRole.PROFESSIONAL); // ✅ AGREGADO
+        AppUser newProfessional = AppUser.builder()
+                .name(name)
+                .email(email)
+                .provider("GOOGLE")
+                .providerId(googleId)
+                .emailVerified(emailVerified != null ? emailVerified : false)
+                .activeRole(UserRole.PROFESSIONAL)
+                .reputationScore(0.0)
+                .totalRatings(0)
+                .monthlyWorkplaceChanges(0)
+                .searchable(true)
+                .build();
 
-        return professionalRepo.save(newProfessional);
+        return appUserRepo.save(newProfessional);
     }
 
-    // ========== Mapper ==========
-    private ProfessionalResponse toResponse(Professional professional) {
+    private ProfessionalResponse toResponse(AppUser professional) {
         ProfessionalResponse response = new ProfessionalResponse();
         response.setId(professional.getId());
         response.setName(professional.getName());
@@ -164,39 +211,33 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         response.setProfilePicture(professional.getProfilePicture());
         response.setEmailVerified(professional.getEmailVerified());
         response.setProvider(professional.getProvider());
-        response.setProfessionType(professional.getProfessionType()); // NUEVO
+        response.setProfessionType(professional.getProfessionType());
         response.setCreatedAt(professional.getCreatedAt());
-        response.setAverageRating(professional.getAverageRating());
+        response.setAverageRating(professional.getReputationScore());
         response.setTotalRatings(professional.getTotalRatings());
         response.setMonthlyWorkplaceChanges(professional.getMonthlyWorkplaceChanges());
-        response.setCanChangeWorkplace(professional.canChangeWorkplace());
+        response.setCanChangeWorkplace(canChangeWorkplace(professional));
         return response;
     }
 
     @Override
     @Transactional
     public void updateProfessionalReputation(Long professionalId) {
-
         System.out.println(">>> updateProfessionalReputation called - professionalId: " + professionalId);
 
-
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new RuntimeException("Professional not found with id: " + professionalId));
 
-        // Calcular promedio (puede ser null si no hay ratings)
         Double averageScore = ratingRepo.calculateAverageScore(professionalId);
-
-        // Contar total de ratings
         Long totalRatings = ratingRepo.countRatingsByProfessional(professionalId);
 
         System.out.println(">>> Calculado - averageScore: " + averageScore + ", totalRatings: " + totalRatings);
 
-        // Actualizar campos
         professional.setReputationScore(averageScore != null ? averageScore : 0.0);
         professional.setTotalRatings(totalRatings != null ? totalRatings.intValue() : 0);
 
-        // Guardar cambios
-        professionalRepo.save(professional);
+        appUserRepo.save(professional);
 
         System.out.println(">>> Professional guardado - reputationScore: " + professional.getReputationScore() + ", totalRatings: " + professional.getTotalRatings());
     }

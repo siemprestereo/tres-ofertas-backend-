@@ -1,6 +1,7 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.service.AuthService;
 import org.springframework.security.core.Authentication;
@@ -15,11 +16,9 @@ import java.util.Optional;
 public class AuthServiceImpl implements AuthService {
 
     private final AppUserRepo appUserRepo;
-    private final ProfessionalRepo professionalRepository;
 
-    public AuthServiceImpl(AppUserRepo appUserRepo, ProfessionalRepo professionalRepository) {
+    public AuthServiceImpl(AppUserRepo appUserRepo) {
         this.appUserRepo = appUserRepo;
-        this.professionalRepository = professionalRepository;
     }
 
     @Override
@@ -41,55 +40,31 @@ public class AuthServiceImpl implements AuthService {
         System.out.println("Principal class: " + principal.getClass().getName());
         System.out.println("Principal: " + principal);
 
+        String email = null;
+
         // Caso 1: Login con OAuth2 (Google)
         if (principal instanceof OAuth2User) {
             System.out.println("→ OAuth2User detected");
             OAuth2User oAuth2User = (OAuth2User) principal;
-            String email = oAuth2User.getAttribute("email");
+            email = oAuth2User.getAttribute("email");
             System.out.println("Email from OAuth2: " + email);
-            Optional<AppUser> user = appUserRepo.findByEmail(email);
-            if (user.isEmpty()) {
-                // Intentar buscar en ProfessionalRepository
-                return professionalRepository.findByEmail(email)
-                        .map(p -> (AppUser) p);
-            }
-            return user;
         }
-
         // Caso 2: Login con email/password (UserDetails)
-        if (principal instanceof UserDetails) {
+        else if (principal instanceof UserDetails) {
             System.out.println("→ UserDetails detected");
-            String username = ((UserDetails) principal).getUsername();
-            System.out.println("Username: " + username);
-            Optional<AppUser> user = appUserRepo.findByEmail(username);
-            if (user.isEmpty()) {
-                // Intentar buscar en ProfessionalRepository
-                return professionalRepository.findByEmail(username)
-                        .map(p -> (AppUser) p);
-            }
-            return user;
+            email = ((UserDetails) principal).getUsername();
+            System.out.println("Username: " + email);
+        }
+        // Caso 3: Principal es directamente el email (String)
+        else if (principal instanceof String) {
+            System.out.println("→ String principal detected");
+            email = (String) principal;
+            System.out.println("Email: " + email);
         }
 
-        // Caso 3: Principal es directamente el email (String)
-        if (principal instanceof String) {
-            System.out.println("→ String principal detected");
-            String email = (String) principal;
-            System.out.println("Email: " + email);
-
-            // Primero intentar en AppUserRepo
+        if (email != null) {
             Optional<AppUser> user = appUserRepo.findByEmail(email);
-            System.out.println("Found in AppUserRepo: " + user.isPresent());
-
-            if (user.isEmpty()) {
-                // Si no se encuentra, buscar en ProfessionalRepository
-                System.out.println("Trying ProfessionalRepository...");
-                Optional<Professional> professional = professionalRepository.findByEmail(email);
-                System.out.println("Found in ProfessionalRepository: " + professional.isPresent());
-
-                if (professional.isPresent()) {
-                    return Optional.of((AppUser) professional.get());
-                }
-            }
+            System.out.println("Found user: " + user.isPresent());
             return user;
         }
 
@@ -100,22 +75,21 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public boolean isCurrentUserProfessional() {
         return getCurrentUser()
-                .map(user -> user instanceof Professional)
+                .map(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElse(false);
     }
 
     @Override
     public boolean isCurrentUserClient() {
         return getCurrentUser()
-                .map(user -> user instanceof Client)
+                .map(user -> UserRole.CLIENT.equals(user.getActiveRole()))
                 .orElse(false);
     }
 
     @Override
-    public Optional<Professional> getCurrentProfessional() {
+    public Optional<AppUser> getCurrentProfessional() {
         System.out.println("=== DEBUG getCurrentProfessional ===");
 
-        // Obtener el usuario actual
         Optional<AppUser> currentUser = getCurrentUser();
 
         if (currentUser.isEmpty()) {
@@ -124,26 +98,23 @@ public class AuthServiceImpl implements AuthService {
         }
 
         AppUser user = currentUser.get();
-        System.out.println("✅ User found: id=" + user.getId() + ", class=" + user.getClass().getSimpleName());
+        System.out.println("✅ User found: id=" + user.getId() + ", activeRole=" + user.getActiveRole());
 
-        // IMPORTANTE: No usar instanceof, buscar directamente en ProfessionalRepository
-        // porque Hibernate puede haber cargado como AppUser genérico
-        Long userId = user.getId();
-        Optional<Professional> professional = professionalRepository.findById(userId);
-
-        if (professional.isEmpty()) {
-            System.out.println("❌ No existe Professional con id=" + userId);
-        } else {
-            System.out.println("✅ Professional found: id=" + professional.get().getId());
+        // Verificar que el activeRole sea PROFESSIONAL
+        if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
+            System.out.println("✅ User is a Professional");
+            return Optional.of(user);
         }
 
-        return professional;
+        System.out.println("❌ User is not a Professional (activeRole=" + user.getActiveRole() + ")");
+        return Optional.empty();
     }
 
     @Override
-    public Optional<Client> getCurrentClient() {
+    public Optional<AppUser> getCurrentClient() {
         return getCurrentUser()
-                .filter(user -> user instanceof Client)
-                .map(user -> (Client) user);
+                .filter(user -> UserRole.CLIENT.equals(user.getActiveRole()))
+                .map(Optional::of)
+                .orElse(Optional.empty());
     }
 }

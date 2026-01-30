@@ -1,9 +1,12 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.request.WorkHistoryRequest;
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.Business;
 import com.example.waiter_rating.model.BusinessType;
+import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.model.WorkHistory;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.BusinessRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,16 +23,16 @@ import java.util.Optional;
 public class WorkHistoryServiceImpl implements WorkHistoryService {
 
     private final WorkHistoryRepo workHistoryRepo;
-    private final ProfessionalRepo professionalRepo;
+    private final AppUserRepo appUserRepo;
     private final BusinessRepo businessRepo;
-
     private final RatingRepo ratingRepo;
 
     public WorkHistoryServiceImpl(WorkHistoryRepo workHistoryRepo,
-                                  ProfessionalRepo professionalRepo,
-                                  BusinessRepo businessRepo, RatingRepo ratingRepo) {
+                                  AppUserRepo appUserRepo,
+                                  BusinessRepo businessRepo,
+                                  RatingRepo ratingRepo) {
         this.workHistoryRepo = workHistoryRepo;
-        this.professionalRepo = professionalRepo;
+        this.appUserRepo = appUserRepo;
         this.businessRepo = businessRepo;
         this.ratingRepo = ratingRepo;
     }
@@ -36,32 +40,25 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
     @Override
     @Transactional
     public WorkHistory addWorkHistory(Long professionalId, WorkHistoryRequest request) {
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + professionalId));
 
-        // Determinar si es trabajo activo
         boolean isActiveJob = (request.getEndDate() == null);
 
-        // Validar límites SOLO si es trabajo ACTIVO
         if (isActiveJob) {
-            // Validar máximo 3 trabajos activos simultáneos
             validateMaxActiveJobs(professionalId);
-
-            // Validar límite mensual de cambios
             validateMonthlyWorkplaceChanges(professional);
         }
 
-        // Crear Business (siempre nuevo, sin búsqueda ni reutilización)
         Business business;
         if (request.getBusinessId() != null) {
-            // Si viene businessId, usarlo (caso poco común)
             business = businessRepo.findById(request.getBusinessId())
                     .orElseThrow(() -> new IllegalArgumentException("Business no encontrado: " + request.getBusinessId()));
         } else {
-            // Siempre crear un nuevo Business con el nombre ingresado
             business = Business.builder()
                     .name(request.getBusinessName())
-                    .businessType(BusinessType.RESTAURANT) // Default
+                    .businessType(BusinessType.RESTAURANT)
                     .build();
             business = businessRepo.save(business);
         }
@@ -74,39 +71,46 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .isActive(isActiveJob)
-                .isFreelance(request.getIsFreelance() != null ? request.getIsFreelance() : false) // ← AGREGAR ESTA LÍNEA
+                .isFreelance(request.getIsFreelance() != null ? request.getIsFreelance() : false)
                 .referenceContact(request.getReferenceContact())
                 .description(request.getDescription())
                 .build();
 
         workHistory = workHistoryRepo.save(workHistory);
 
-        // Registrar cambio de workplace SOLO si es trabajo activo
         if (isActiveJob) {
-            professional.registerWorkplaceChange();
-            professionalRepo.save(professional);
+            registerWorkplaceChange(professional);
+            appUserRepo.save(professional);
         }
 
         return workHistory;
     }
 
+    private void registerWorkplaceChange(AppUser professional) {
+        LocalDate now = LocalDate.now();
+        LocalDate lastChange = professional.getLastWorkplaceChangeDate();
+
+        if (lastChange == null || YearMonth.from(lastChange).isBefore(YearMonth.from(now))) {
+            professional.setMonthlyWorkplaceChanges(1);
+        } else {
+            professional.setMonthlyWorkplaceChanges(professional.getMonthlyWorkplaceChanges() + 1);
+        }
+
+        professional.setLastWorkplaceChangeDate(now);
+    }
+
     @Override
     public WorkHistory updateWorkHistory(Long professionalId, Long workHistoryId, WorkHistoryRequest request) {
-        // Buscar el trabajo existente
         WorkHistory workHistory = workHistoryRepo.findById(workHistoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Trabajo no encontrado con ID: " + workHistoryId));
 
-        // Verificar que pertenece al professional correcto
         if (!workHistory.getProfessional().getId().equals(professionalId)) {
             throw new IllegalArgumentException("Este trabajo no pertenece al profesional especificado");
         }
 
-        // ✅ CONTAR CALIFICACIONES ASOCIADAS A ESTE TRABAJO
         long ratingCount = ratingRepo.countByWorkHistoryId(workHistoryId);
 
-        // ✅ VALIDAR QUE NO SE MODIFIQUEN CAMPOS CRÍTICOS SI TIENE CALIFICACIONES
         if (ratingCount > 0) {
-            // Validar que position no haya cambiado
             if (request.getPosition() != null && !request.getPosition().equals(workHistory.getPosition())) {
                 throw new IllegalStateException(
                         "No se puede cambiar el puesto de un trabajo que tiene " +
@@ -114,7 +118,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                 );
             }
 
-            // Validar que businessName no haya cambiado
             if (request.getBusinessName() != null && !request.getBusinessName().equals(workHistory.getBusinessName())) {
                 throw new IllegalStateException(
                         "No se puede cambiar la empresa de un trabajo que tiene " +
@@ -122,7 +125,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                 );
             }
 
-            // Validar que isFreelance no haya cambiado
             if (request.getIsFreelance() != null && !request.getIsFreelance().equals(workHistory.getIsFreelance())) {
                 throw new IllegalStateException(
                         "No se puede cambiar el tipo de trabajo (autónomo/relación de dependencia) " +
@@ -131,7 +133,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             }
         }
 
-        // ✅ Campos que SÍ se pueden actualizar siempre:
         if (request.getDescription() != null) {
             workHistory.setDescription(request.getDescription());
         }
@@ -145,7 +146,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             workHistory.setEndDate(request.getEndDate());
         }
 
-        // Solo actualizar campos críticos si NO tiene calificaciones
         if (ratingCount == 0) {
             if (request.getPosition() != null) {
                 workHistory.setPosition(request.getPosition());
@@ -158,7 +158,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             }
         }
 
-        // Actualizar isActive basado en endDate
         if (request.getEndDate() != null) {
             workHistory.setIsActive(false);
         } else {
@@ -174,7 +173,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
         WorkHistory workHistory = workHistoryRepo.findById(workHistoryId)
                 .orElseThrow(() -> new IllegalArgumentException("WorkHistory no encontrado: " + workHistoryId));
 
-        // Verificar que el WorkHistory pertenece al professional
         if (!workHistory.getProfessional().getId().equals(professionalId)) {
             throw new IllegalArgumentException("Este trabajo no pertenece al professional especificado");
         }
@@ -189,7 +187,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
         WorkHistory workHistory = workHistoryRepo.findById(workHistoryId)
                 .orElseThrow(() -> new IllegalArgumentException("WorkHistory no encontrado: " + workHistoryId));
 
-        // Verificar que el WorkHistory pertenece al professional
         if (!workHistory.getProfessional().getId().equals(professionalId)) {
             throw new IllegalArgumentException("Este trabajo no pertenece al professional especificado");
         }
@@ -212,10 +209,10 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
     @Override
     @Transactional
     public WorkHistory enableFreelanceWork(Long professionalId) {
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + professionalId));
 
-        // Verificar si ya tiene freelance activo
         Optional<WorkHistory> existingFreelance = workHistoryRepo.findByProfessionalIdAndIsActiveTrue(professionalId)
                 .stream()
                 .filter(wh -> wh.getBusiness() != null && wh.getBusiness().getBusinessType() == BusinessType.FREELANCE)
@@ -225,7 +222,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             throw new IllegalStateException("El professional ya tiene trabajo independiente activo");
         }
 
-        // Crear o buscar Business de tipo FREELANCE para este profesional
         String freelanceName = professional.getName() + " - Independiente";
         Business freelanceBusiness = businessRepo.findByNameIgnoreCase(freelanceName)
                 .orElseGet(() -> {
@@ -236,7 +232,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                     return businessRepo.save(newBusiness);
                 });
 
-        // Crear WorkHistory
         WorkHistory workHistory = WorkHistory.builder()
                 .professional(professional)
                 .business(freelanceBusiness)
@@ -253,10 +248,10 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
     @Override
     @Transactional
     public void disableFreelanceWork(Long professionalId) {
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + professionalId));
 
-        // Buscar el WorkHistory freelance activo
         Optional<WorkHistory> freelanceWork = workHistoryRepo.findByProfessionalIdAndIsActiveTrue(professionalId)
                 .stream()
                 .filter(wh -> wh.getBusiness() != null && wh.getBusiness().getBusinessType() == BusinessType.FREELANCE)
@@ -266,15 +261,11 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             throw new IllegalStateException("No se encontró trabajo independiente activo para desactivar");
         }
 
-        // Cerrar el trabajo freelance
         WorkHistory work = freelanceWork.get();
         work.closeJob(LocalDate.now());
         workHistoryRepo.save(work);
     }
 
-    /**
-     * Valida que el professional no tenga más de 3 trabajos activos simultáneos
-     */
     private void validateMaxActiveJobs(Long professionalId) {
         List<WorkHistory> activeJobs = workHistoryRepo.findByProfessionalIdAndIsActiveTrue(professionalId);
 
@@ -285,12 +276,19 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
         }
     }
 
-    /**
-     * Valida que el professional no haya excedido el límite de cambios mensuales
-     * Este límite solo aplica a trabajos ACTIVOS
-     */
-    private void validateMonthlyWorkplaceChanges(Professional professional) {
-        if (!professional.canChangeWorkplace()) {
+    private void validateMonthlyWorkplaceChanges(AppUser professional) {
+        if (professional.getLastWorkplaceChangeDate() == null) {
+            return;
+        }
+
+        YearMonth lastChangeMonth = YearMonth.from(professional.getLastWorkplaceChangeDate());
+        YearMonth currentMonth = YearMonth.now();
+
+        if (!lastChangeMonth.equals(currentMonth)) {
+            return;
+        }
+
+        if (professional.getMonthlyWorkplaceChanges() >= 2) {
             throw new IllegalStateException(
                     "Has alcanzado el límite de 3 cambios de trabajo activo por mes. " +
                             "Podrás agregar más a partir del próximo mes. " +

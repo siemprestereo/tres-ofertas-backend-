@@ -1,6 +1,8 @@
 package com.example.waiter_rating.service.impl;
 
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.WorkHistory;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
 import com.example.waiter_rating.service.PdfService;
 import com.itextpdf.io.font.constants.StandardFonts;
@@ -31,7 +33,7 @@ import java.util.List;
 @Service
 public class PdfServiceImpl implements PdfService {
 
-    private final ProfessionalRepo professionalRepo;
+    private final AppUserRepo appUserRepo;
     private final WorkHistoryRepo workHistoryRepo;
 
     // Colores personalizados
@@ -40,15 +42,15 @@ public class PdfServiceImpl implements PdfService {
     private static final DeviceRgb LIGHT_GRAY = new DeviceRgb(248, 250, 252); // Gris muy claro para sidebar
     private static final DeviceRgb DARK_GRAY = new DeviceRgb(31, 41, 55); // Gris oscuro para texto
 
-    public PdfServiceImpl(ProfessionalRepo professionalRepo, WorkHistoryRepo workHistoryRepo) {
-        this.professionalRepo = professionalRepo;
+    public PdfServiceImpl(AppUserRepo appUserRepo, WorkHistoryRepo workHistoryRepo) {
+        this.appUserRepo = appUserRepo;
         this.workHistoryRepo = workHistoryRepo;
     }
 
     @Override
     public byte[] generateCvPdf(Long professionalId) throws Exception {
         // Obtener datos del profesional
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado"));
 
         List<WorkHistory> workHistory = workHistoryRepo.findByProfessionalId(professionalId);
@@ -135,7 +137,7 @@ public class PdfServiceImpl implements PdfService {
         return baos.toByteArray();
     }
 
-    private void addProfilePhoto(Cell cell, Professional professional, PdfFont boldFont) {
+    private void addProfilePhoto(Cell cell, AppUser professional, PdfFont boldFont) {
         String initial = professional.getName().substring(0, 1).toUpperCase();
 
         // Si tiene foto, intentar cargarla
@@ -154,35 +156,29 @@ public class PdfServiceImpl implements PdfService {
                     Image photo = new Image(ImageDataFactory.create(photoFile.getAbsolutePath()));
 
                     // Configurar imagen con aspect ratio preservado
-                    // Determinar si es más ancha o más alta
                     float imgWidth = photo.getImageWidth();
                     float imgHeight = photo.getImageHeight();
 
                     // Calcular tamaño manteniendo proporción
                     float targetSize = 80f;
                     if (imgWidth > imgHeight) {
-                        // Imagen más ancha que alta
                         photo.scaleToFit(targetSize, targetSize * (imgHeight / imgWidth));
                     } else {
-                        // Imagen más alta que ancha
                         photo.scaleToFit(targetSize * (imgWidth / imgHeight), targetSize);
                     }
 
-                    // Si es cuadrada o casi cuadrada, ajustar a 80x80
                     if (Math.abs(imgWidth - imgHeight) < 10) {
                         photo.scaleToFit(targetSize, targetSize);
                     }
 
-                    // Configurar bordes y márgenes
                     photo.setBorder(new SolidBorder(PRIMARY_COLOR, 3))
                             .setMarginBottom(15)
                             .setHorizontalAlignment(com.itextpdf.layout.properties.HorizontalAlignment.CENTER);
 
                     cell.add(photo);
-                    return; // Salir si la foto se cargó exitosamente
+                    return;
                 }
             } catch (Exception e) {
-                // Si falla, usar inicial como fallback
                 System.err.println("Error cargando foto de perfil: " + e.getMessage());
             }
         }
@@ -202,8 +198,7 @@ public class PdfServiceImpl implements PdfService {
         cell.add(photoPlaceholder);
     }
 
-    private void addContactSection(Cell cell, Professional professional, PdfFont boldFont, PdfFont regularFont) {
-        // Título "CONTACTO"
+    private void addContactSection(Cell cell, AppUser professional, PdfFont boldFont, PdfFont regularFont) {
         Paragraph title = new Paragraph("CONTACTO")
                 .setFont(boldFont)
                 .setFontSize(12)
@@ -211,15 +206,12 @@ public class PdfServiceImpl implements PdfService {
                 .setMarginBottom(10);
         cell.add(title);
 
-        // Email
         addContactItem(cell, "Email", professional.getEmail(), regularFont);
 
-        // Teléfono
         if (professional.getPhone() != null && !professional.getPhone().isEmpty()) {
             addContactItem(cell, "Teléfono", professional.getPhone(), regularFont);
         }
 
-        // Ubicación
         if (professional.getLocation() != null && !professional.getLocation().isEmpty()) {
             addContactItem(cell, "Ubicación", professional.getLocation(), regularFont);
         }
@@ -242,11 +234,10 @@ public class PdfServiceImpl implements PdfService {
         cell.add(valueP);
     }
 
-    private void addReputationSection(Cell cell, Professional professional, PdfFont boldFont, PdfFont regularFont) {
+    private void addReputationSection(Cell cell, AppUser professional, PdfFont boldFont, PdfFont regularFont) {
         double reputationScore = professional.getReputationScore() != null ? professional.getReputationScore() : 0.0;
         int totalRatings = professional.getTotalRatings() != null ? professional.getTotalRatings() : 0;
 
-        // Título
         Paragraph title = new Paragraph("REPUTACIÓN")
                 .setFont(boldFont)
                 .setFontSize(12)
@@ -254,18 +245,16 @@ public class PdfServiceImpl implements PdfService {
                 .setMarginBottom(10);
         cell.add(title);
 
-        // Estrellas visuales
         String stars = "★".repeat((int) Math.round(reputationScore)) +
                 "☆".repeat(5 - (int) Math.round(reputationScore));
 
         Paragraph starsP = new Paragraph(stars)
                 .setFont(regularFont)
                 .setFontSize(16)
-                .setFontColor(new DeviceRgb(251, 191, 36)) // Amarillo
+                .setFontColor(new DeviceRgb(251, 191, 36))
                 .setMarginBottom(5);
         cell.add(starsP);
 
-        // Promedio
         Paragraph avgP = new Paragraph(String.format("%.1f / 5.0", reputationScore))
                 .setFont(boldFont)
                 .setFontSize(11)
@@ -273,7 +262,6 @@ public class PdfServiceImpl implements PdfService {
                 .setMarginBottom(3);
         cell.add(avgP);
 
-        // Total calificaciones
         Paragraph totalP = new Paragraph(totalRatings + " calificaciones")
                 .setFont(regularFont)
                 .setFontSize(9)
@@ -281,8 +269,7 @@ public class PdfServiceImpl implements PdfService {
         cell.add(totalP);
     }
 
-    private void addNameHeader(Cell cell, Professional professional, PdfFont boldFont, PdfFont regularFont) {
-        // Nombre
+    private void addNameHeader(Cell cell, AppUser professional, PdfFont boldFont, PdfFont regularFont) {
         Paragraph name = new Paragraph(professional.getName().toUpperCase())
                 .setFont(boldFont)
                 .setFontSize(26)
@@ -290,7 +277,6 @@ public class PdfServiceImpl implements PdfService {
                 .setMarginBottom(5);
         cell.add(name);
 
-        // Título profesional
         if (professional.getProfessionalTitle() != null && !professional.getProfessionalTitle().isEmpty()) {
             Paragraph title = new Paragraph(professional.getProfessionalTitle())
                     .setFont(regularFont)
@@ -302,7 +288,6 @@ public class PdfServiceImpl implements PdfService {
             cell.add(new Paragraph("\n").setMarginBottom(10));
         }
 
-        // Línea divisora
         addDividerLine(cell);
     }
 
@@ -315,7 +300,6 @@ public class PdfServiceImpl implements PdfService {
                 .setMarginBottom(10);
         cell.add(titleP);
 
-        // Línea divisora
         addDividerLine(cell);
     }
 
@@ -325,7 +309,6 @@ public class PdfServiceImpl implements PdfService {
         for (int i = 0; i < workHistory.size(); i++) {
             WorkHistory work = workHistory.get(i);
 
-            // Puesto
             Paragraph position = new Paragraph(work.getPosition())
                     .setFont(boldFont)
                     .setFontSize(12)
@@ -333,7 +316,6 @@ public class PdfServiceImpl implements PdfService {
                     .setMarginBottom(3);
             cell.add(position);
 
-            // Empresa + Fechas en la misma línea
             String startDate = work.getStartDate().format(formatter);
             String endDate = work.getEndDate() != null ? work.getEndDate().format(formatter) : "Presente";
 
@@ -350,9 +332,7 @@ public class PdfServiceImpl implements PdfService {
                     .setMarginBottom(5);
             cell.add(companyAndDates);
 
-            // Descripción con bullets
             if (work.getDescription() != null && !work.getDescription().isEmpty()) {
-                // Dividir por líneas o comas
                 String[] responsibilities = work.getDescription().split("[,\n]");
                 for (String resp : responsibilities) {
                     String trimmed = resp.trim();
@@ -368,17 +348,15 @@ public class PdfServiceImpl implements PdfService {
                 }
             }
 
-            // Badge "Activo"
             if (work.getIsActive()) {
                 Paragraph activeBadge = new Paragraph("✓ Actualmente trabajando aquí")
                         .setFont(regularFont)
                         .setFontSize(8)
-                        .setFontColor(new DeviceRgb(34, 197, 94)) // Verde
+                        .setFontColor(new DeviceRgb(34, 197, 94))
                         .setMarginTop(3);
                 cell.add(activeBadge);
             }
 
-            // Espacio entre trabajos (excepto el último)
             if (i < workHistory.size() - 1) {
                 cell.add(new Paragraph("\n").setMarginBottom(5));
             }
@@ -394,7 +372,7 @@ public class PdfServiceImpl implements PdfService {
         Cell lineCell = new Cell()
                 .add(new Paragraph(""))
                 .setHeight(1)
-                .setBackgroundColor(new DeviceRgb(229, 231, 235)) // Gris claro
+                .setBackgroundColor(new DeviceRgb(229, 231, 235))
                 .setBorder(null);
 
         line.addCell(lineCell);
