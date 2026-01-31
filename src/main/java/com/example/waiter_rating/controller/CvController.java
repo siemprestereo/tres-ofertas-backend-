@@ -617,7 +617,7 @@ public class CvController {
     // ========== MAPPERS ==========
 
     private CvPublicResponse toPublicResponse(Cv cv) {
-        Professional p = cv.getProfessional();
+        AppUser p = cv.getProfessional();
 
         CvPublicResponse dto = new CvPublicResponse();
         dto.setProfessionalId(p.getId());

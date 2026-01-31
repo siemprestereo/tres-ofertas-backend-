@@ -2,6 +2,8 @@ package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.dto.request.SwitchRoleRequest;
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.UserRole;
+import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.service.AuthService;
 import com.example.waiter_rating.service.JwtService;
 import com.example.waiter_rating.service.RoleSwitchService;
@@ -55,7 +57,7 @@ public class RoleSwitchController {
         );
 
         // Determinar a dónde redirigir según el nuevo rol
-        String redirectTo = request.getNewRole() == AppUser.UserRole.PROFESSIONAL
+        String redirectTo = request.getNewRole() == UserRole.PROFESSIONAL
                 ? "/professional-dashboard"
                 : "/client-dashboard";
 

@@ -29,7 +29,7 @@ public class RatingController {
     @PostMapping
     public ResponseEntity<?> submit(@Valid @RequestBody RatingRequest request) {
         // Verificar que el usuario está autenticado como cliente
-        Client client = authService.getCurrentClient()
+        AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente para calificar"));
 
         // Automáticamente asignar el clientId del usuario logueado
@@ -46,7 +46,7 @@ public class RatingController {
             @Valid @RequestBody RatingFromQrRequest request) {
 
         // Verificar que el usuario está autenticado como cliente
-        Client client = authService.getCurrentClient()
+        AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente para calificar"));
 
         // Automáticamente asignar el clientId
@@ -65,7 +65,7 @@ public class RatingController {
             @RequestBody RatingRequest request) {
 
         // Verificar que está autenticado como cliente
-        Client client = authService.getCurrentClient()
+        AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente"));
 
         // Obtener el rating
@@ -93,7 +93,7 @@ public class RatingController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         // Verificar que está autenticado como cliente
-        Client client = authService.getCurrentClient()
+        AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente"));
 
         // Obtener el rating
@@ -140,7 +140,7 @@ public class RatingController {
         dto.setProfessionalName(r.getProfessional().getName());
         dto.setProfessionType(r.getProfessional().getProfessionType());
 
-        // Client info (puede ser null)
+        // AppUser info (puede ser null)
         if (r.getClient() != null) {
             dto.setClientId(r.getClient().getId());
             dto.setClientName(r.getClient().getName());
@@ -177,7 +177,7 @@ public class RatingController {
     @GetMapping("/my-ratings")
     public ResponseEntity<List<RatingResponse>> getMyRatings() {
         // Obtener cliente logueado
-        Client client = authService.getCurrentClient()
+        AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente"));
 
         // Obtener sus calificaciones

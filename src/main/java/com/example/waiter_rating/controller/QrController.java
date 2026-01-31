@@ -30,7 +30,7 @@ public class QrController {
             @RequestParam(defaultValue = "3") int ttlMinutes) {
 
         // Verificar que el usuario es un Professional
-        Professional professional = authService.getCurrentProfessional()
+        AppUser professional = authService.getCurrentProfessional()
                 .orElseThrow(() -> new IllegalStateException("Solo los professionals pueden generar QRs"));
 
         System.out.println(">>> Generando QR para professional=" + professional.getId() +
@@ -71,7 +71,7 @@ public class QrController {
     @PostMapping("/{code}/invalidate")
     public ResponseEntity<?> invalidate(@PathVariable String code) {
         // Verificar que es un Professional
-        Professional professional = authService.getCurrentProfessional()
+        AppUser professional = authService.getCurrentProfessional()
                 .orElseThrow(() -> new IllegalStateException("Solo los professionals pueden invalidar QRs"));
 
         // TODO: Verificar que el QR pertenece a este professional
