@@ -3,11 +3,11 @@ package com.example.waiter_rating.controller;
 import com.example.waiter_rating.dto.request.SwitchRoleRequest;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.UserRole;
-import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.service.AuthService;
 import com.example.waiter_rating.service.JwtService;
 import com.example.waiter_rating.service.RoleSwitchService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,16 +31,11 @@ public class RoleSwitchController {
         this.jwtService = jwtService;
     }
 
-    /**
-     * Cambia el rol activo del usuario autenticado
-     */
     @PostMapping("/switch")
     public ResponseEntity<?> switchRole(@Valid @RequestBody SwitchRoleRequest request) {
-        // Obtener el usuario actual (puede ser Client o Professional)
         AppUser currentUser = authService.getCurrentUser()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado"));
 
-        // Realizar el cambio de rol
         AppUser updatedUser = roleSwitchService.switchRole(
                 currentUser.getId(),
                 request.getNewRole(),
@@ -48,7 +43,6 @@ public class RoleSwitchController {
                 request.getProfessionalTitle()
         );
 
-        // Generar nuevo JWT con el nuevo rol
         String newToken = jwtService.generateToken(
                 updatedUser.getId(),
                 request.getNewRole().toString(),
@@ -56,7 +50,6 @@ public class RoleSwitchController {
                 updatedUser.getName()
         );
 
-        // Determinar a dónde redirigir según el nuevo rol
         String redirectTo = request.getNewRole() == UserRole.PROFESSIONAL
                 ? "/professional-dashboard"
                 : "/client-dashboard";
@@ -69,31 +62,38 @@ public class RoleSwitchController {
         ));
     }
 
-    /**
-     * Obtiene el rol activo actual del usuario
-     */
-    /**
-     * Obtiene el rol activo actual del usuario y la info de cambio de rol
-     */
     @GetMapping("/current")
     public ResponseEntity<?> getCurrentRole() {
-        AppUser currentUser = authService.getCurrentUser()
-                .orElseThrow(() -> new IllegalStateException("Debe estar autenticado"));
+        try {
+            System.out.println("=== /api/role/current called ===");
+            
+            AppUser currentUser = authService.getCurrentUser()
+                    .orElseThrow(() -> new IllegalStateException("Debe estar autenticado"));
+            
+            System.out.println("✅ Current user: " + currentUser.getEmail());
+            
+            LocalDateTime nextAllowedSwitch = currentUser.getNextAllowedRoleSwitchDate();
+            System.out.println("Next allowed switch: " + nextAllowedSwitch);
+            
+            boolean canSwitch = currentUser.canSwitchRole();
+            System.out.println("Can switch: " + canSwitch);
 
-        LocalDateTime nextAllowedSwitch = currentUser.getNextAllowedRoleSwitchDate();
-        boolean canSwitch = currentUser.canSwitchRole();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-        return ResponseEntity.ok(Map.of(
-                "activeRole", currentUser.getActiveRole(),
-                "userId", currentUser.getId(),
-                "email", currentUser.getEmail(),
-                "name", currentUser.getName(),
-                "canSwitchRole", canSwitch,
-                "nextAllowedRoleSwitchDate", nextAllowedSwitch != null ? nextAllowedSwitch.format(formatter) : null,
-                "lastRoleSwitchAt", currentUser.getLastRoleSwitchAt() != null ? currentUser.getLastRoleSwitchAt().format(formatter) : null
-        ));
+            return ResponseEntity.ok(Map.of(
+                    "activeRole", currentUser.getActiveRole().toString(),
+                    "userId", currentUser.getId(),
+                    "email", currentUser.getEmail(),
+                    "name", currentUser.getName(),
+                    "canSwitchRole", canSwitch,
+                    "nextAllowedRoleSwitchDate", nextAllowedSwitch != null ? nextAllowedSwitch.format(formatter) : "now",
+                    "lastRoleSwitchAt", currentUser.getLastRoleSwitchAt() != null ? currentUser.getLastRoleSwitchAt().format(formatter) : "never"
+            ));
+        } catch (Exception e) {
+            System.err.println("❌ ERROR in /api/role/current: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage(), "stackTrace", e.toString()));
+        }
     }
-
 }
