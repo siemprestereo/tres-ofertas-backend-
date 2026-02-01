@@ -46,9 +46,10 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
 
         boolean isActiveJob = (request.getEndDate() == null);
 
+        // Validar límite de 3 trabajos activos simultáneos
         if (isActiveJob) {
             validateMaxActiveJobs(professionalId);
-            validateMonthlyWorkplaceChanges(professional);
+            // NO validar cambios mensuales aquí - esto es un trabajo NUEVO, no un cambio
         }
 
         Business business;
@@ -78,10 +79,8 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
 
         workHistory = workHistoryRepo.save(workHistory);
 
-        if (isActiveJob) {
-            registerWorkplaceChange(professional);
-            appUserRepo.save(professional);
-        }
+        // NO registrar cambio de lugar de trabajo al crear uno nuevo
+        // Solo se registra cuando CAMBIAS un trabajo existente de inactivo a activo
 
         return workHistory;
     }
