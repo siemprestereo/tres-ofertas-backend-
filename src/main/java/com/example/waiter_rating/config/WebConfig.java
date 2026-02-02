@@ -1,20 +1,23 @@
 package com.example.waiter_rating.config;
 
+import com.example.waiter_rating.security.RateLimitInterceptor;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-import java.nio.file.Paths;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Servir archivos desde /uploads/profiles/
-        String uploadPath = Paths.get("uploads").toFile().getAbsolutePath();
+    private final RateLimitInterceptor rateLimitInterceptor;
 
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadPath + "/");
+    public WebConfig(RateLimitInterceptor rateLimitInterceptor) {
+        this.rateLimitInterceptor = rateLimitInterceptor;
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(rateLimitInterceptor)
+                .addPathPatterns("/api/**") // Aplicar a todos los endpoints de la API
+                .excludePathPatterns("/api/health", "/actuator/**"); // Excluir health checks
     }
 }
