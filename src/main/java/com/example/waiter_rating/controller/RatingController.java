@@ -58,12 +58,12 @@ public class RatingController {
     }
 
     /**
-     * Editar MI calificación (solo el dueño, dentro de 5 minutos)
+     * Editar MI calificación (solo el dueño, dentro de 30 minutos)
      */
     @PutMapping("/{id}")
     public ResponseEntity<?> update(
             @PathVariable Long id,
-            @RequestBody RatingRequest request) {
+            @Valid @RequestBody RatingRequest request) {
 
         // Verificar que está autenticado como cliente
         AppUser client = authService.getCurrentClient()
@@ -78,9 +78,9 @@ public class RatingController {
             throw new IllegalStateException("No puede editar una calificación que no es suya");
         }
 
-        // ✅ Verificar que está dentro de los 5 minutos
+        // ✅ Verificar que está dentro de los 30 minutos
         if (!rating.canEditOrDelete()) {
-            throw new IllegalStateException("Solo puede editar calificaciones dentro de los 5 minutos posteriores a su creación");
+            throw new IllegalStateException("Solo puede editar calificaciones dentro de los 30 minutos posteriores a su creación");
         }
 
         return ratingService.updateRating(id, request.getScore(), request.getComment())
@@ -89,7 +89,7 @@ public class RatingController {
     }
 
     /**
-     * Eliminar MI calificación (solo el dueño, dentro de 5 minutos)
+     * Eliminar MI calificación (solo el dueño, dentro de 30 minutos)
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
@@ -106,9 +106,9 @@ public class RatingController {
             throw new IllegalStateException("No puede eliminar una calificación que no es suya");
         }
 
-        // ✅ Verificar que está dentro de los 5 minutos
+        // ✅ Verificar que está dentro de los 30 minutos
         if (!rating.canEditOrDelete()) {
-            throw new IllegalStateException("Solo puede eliminar calificaciones dentro de los 5 minutos posteriores a su creación");
+            throw new IllegalStateException("Solo puede eliminar calificaciones dentro de los 30 minutos posteriores a su creación");
         }
 
         boolean deleted = ratingService.deleteRating(id);
@@ -128,49 +128,6 @@ public class RatingController {
     public ResponseEntity<Double> average(@PathVariable Long professionalId) {
         return ResponseEntity.ok(ratingService.getAverageScoreForProfessional(professionalId));
     }
-
-    // ---------- Mapper entidad -> DTO ----------
-    private RatingResponse toResponse(Rating r) {
-        RatingResponse dto = new RatingResponse();
-        dto.setId(r.getId());
-        dto.setScore(r.getScore());
-        dto.setComment(r.getComment());
-
-        // Professional info
-        dto.setProfessionalId(r.getProfessional().getId());
-        dto.setProfessionalName(r.getProfessional().getName());
-        dto.setProfessionType(r.getProfessional().getProfessionType());
-
-        // AppUser info (puede ser null)
-        if (r.getClient() != null) {
-            dto.setClientId(r.getClient().getId());
-            dto.setClientName(r.getClient().getName());
-        }
-
-        // Business info
-        dto.setBusinessId(r.getBusiness().getId());
-        dto.setBusinessName(r.getBusiness().getName());
-        dto.setBusinessType(r.getBusiness().getBusinessType());
-
-        // WorkHistory info (lugar específico donde fue calificado)
-        if (r.getWorkHistory() != null) {
-            dto.setWorkHistoryId(r.getWorkHistory().getId());
-            dto.setWorkplaceName(r.getWorkHistory().getBusinessName());
-            dto.setWorkplacePosition(r.getWorkHistory().getPosition());
-        }
-
-        // Timestamps
-        dto.setCreatedAt(r.getCreatedAt());
-        dto.setUpdatedAt(r.getUpdatedAt());
-        dto.setServiceDate(r.getServiceDate());
-
-        // Can edit?
-        dto.setCanEdit(r.canEditOrDelete());
-
-        return dto;
-    }
-
-    // Agregar este método en tu RatingController.java
 
     /**
      * Obtener todas las calificaciones que el cliente logueado ha realizado
@@ -247,5 +204,46 @@ public class RatingController {
                 .toList();
 
         return ResponseEntity.ok(response);
+    }
+
+    // ---------- Mapper entidad -> DTO ----------
+    private RatingResponse toResponse(Rating r) {
+        RatingResponse dto = new RatingResponse();
+        dto.setId(r.getId());
+        dto.setScore(r.getScore());
+        dto.setComment(r.getComment());
+
+        // Professional info
+        dto.setProfessionalId(r.getProfessional().getId());
+        dto.setProfessionalName(r.getProfessional().getName());
+        dto.setProfessionType(r.getProfessional().getProfessionType());
+
+        // AppUser info (puede ser null)
+        if (r.getClient() != null) {
+            dto.setClientId(r.getClient().getId());
+            dto.setClientName(r.getClient().getName());
+        }
+
+        // Business info
+        dto.setBusinessId(r.getBusiness().getId());
+        dto.setBusinessName(r.getBusiness().getName());
+        dto.setBusinessType(r.getBusiness().getBusinessType());
+
+        // WorkHistory info (lugar específico donde fue calificado)
+        if (r.getWorkHistory() != null) {
+            dto.setWorkHistoryId(r.getWorkHistory().getId());
+            dto.setWorkplaceName(r.getWorkHistory().getBusinessName());
+            dto.setWorkplacePosition(r.getWorkHistory().getPosition());
+        }
+
+        // Timestamps
+        dto.setCreatedAt(r.getCreatedAt());
+        dto.setUpdatedAt(r.getUpdatedAt());
+        dto.setServiceDate(r.getServiceDate());
+
+        // Can edit?
+        dto.setCanEdit(r.canEditOrDelete());
+
+        return dto;
     }
 }

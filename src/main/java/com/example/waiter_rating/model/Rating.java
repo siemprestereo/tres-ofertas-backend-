@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "ratings")
@@ -65,6 +66,9 @@ public class Rating {
      * Regla de negocio: editar/eliminar solo dentro de 5 minutos desde la creación
      */
     public boolean canEditOrDelete() {
-        return createdAt != null && createdAt.plusMinutes(5).isAfter(LocalDateTime.now());
+        if (this.createdAt == null) return false;
+        LocalDateTime now = LocalDateTime.now();
+        long minutesPassed = ChronoUnit.MINUTES.between(this.createdAt, now);
+        return minutesPassed < 30; // Cambiar de 5 a 30
     }
 }
