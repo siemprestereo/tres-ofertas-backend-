@@ -24,7 +24,7 @@ import java.util.Optional;
 @Service
 public class RatingServiceImpl implements RatingService {
 
-    private static final int EDIT_WINDOW_MINUTES = 5;
+    private static final int EDIT_WINDOW_MINUTES = 30;
     private static final int RATING_COOLDOWN_MONTHS = 6;
 
     private final RatingRepo ratingRepo;
@@ -93,12 +93,7 @@ public class RatingServiceImpl implements RatingService {
                 .build();
 
         Rating savedRating = ratingRepo.save(rating);
-
-        System.out.println(">>> ANTES de actualizar reputación - Professional ID: " + savedRating.getProfessional().getId());
-
         professionalService.updateProfessionalReputation(savedRating.getProfessional().getId());
-
-        System.out.println(">>> DESPUÉS de actualizar reputación");
         return savedRating;
     }
 
@@ -107,6 +102,7 @@ public class RatingServiceImpl implements RatingService {
     public Rating submitFromQr(String code, @Valid RatingFromQrRequest request) {
         QrToken token = qrTokenRepo.findByCode(code)
                 .orElseThrow(() -> new IllegalArgumentException("QR inválido"));
+
         if (!token.isValidNow()) {
             throw new IllegalStateException("QR expirado o inactivo");
         }
@@ -116,11 +112,15 @@ public class RatingServiceImpl implements RatingService {
             throw new IllegalStateException("El QR no pertenece a un professional válido");
         }
 
-        if (request.getBusinessId() == null) {
-            throw new IllegalArgumentException("Debe indicar businessId al calificar desde QR");
+        // Validación del lugar de trabajo elegido por el cliente
+        WorkHistory workHistory = workHistoryRepo.findById(request.getWorkHistoryId())
+                .orElseThrow(() -> new IllegalArgumentException("WorkHistory no encontrado"));
+
+        if (!workHistory.getProfessional().getId().equals(professional.getId())) {
+            throw new IllegalArgumentException("El lugar de trabajo seleccionado no corresponde a este profesional");
         }
-        Business business = businessRepo.findById(request.getBusinessId())
-                .orElseThrow(() -> new IllegalArgumentException("Business no encontrado: " + request.getBusinessId()));
+
+        Business business = workHistory.getBusiness();
 
         AppUser client = null;
         if (request.getClientId() != null) {
@@ -133,6 +133,7 @@ public class RatingServiceImpl implements RatingService {
         Rating rating = Rating.builder()
                 .professional(professional)
                 .business(business)
+                .workHistory(workHistory)
                 .client(client)
                 .score(request.getScore())
                 .comment(request.getComment())
@@ -143,18 +144,14 @@ public class RatingServiceImpl implements RatingService {
 
         Rating saved = ratingRepo.save(rating);
 
-        token.setActive(false);
-        qrTokenRepo.save(token);
-
+        // Se mantiene activo el token para permitir múltiples escaneos en la mesa (multiusuario)
         professionalService.updateProfessionalReputation(saved.getProfessional().getId());
 
         return saved;
     }
 
     private void validateRatingCooldown(Long clientId, Long professionalId) {
-        if (clientId == null) {
-            return;
-        }
+        if (clientId == null) return;
 
         Optional<Rating> lastRating = ratingRepo.findLastRatingByClientAndProfessional(clientId, professionalId);
 
@@ -180,9 +177,7 @@ public class RatingServiceImpl implements RatingService {
             if (newComment != null) r.setComment(newComment);
             r.setUpdatedAt(LocalDateTime.now());
             Rating updatedRating = ratingRepo.save(r);
-
             professionalService.updateProfessionalReputation(updatedRating.getProfessional().getId());
-
             return updatedRating;
         });
     }
@@ -192,13 +187,9 @@ public class RatingServiceImpl implements RatingService {
     public boolean deleteRating(Long ratingId) {
         return ratingRepo.findById(ratingId).map(r -> {
             ensureEditable(r.getCreatedAt());
-
             Long professionalId = r.getProfessional().getId();
-
             ratingRepo.delete(r);
-
             professionalService.updateProfessionalReputation(professionalId);
-
             return true;
         }).orElse(false);
     }
@@ -237,7 +228,6 @@ public class RatingServiceImpl implements RatingService {
         return ratingRepo.findByClientIdOrderByCreatedAtDesc(clientId);
     }
 
-    // ✅ NUEVO MÉTODO OPTIMIZADO - Con límite opcional
     @Override
     @Transactional(readOnly = true)
     public List<Rating> getRatingsByClient(Long clientId, Integer limit) {
