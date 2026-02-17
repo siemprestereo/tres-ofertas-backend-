@@ -78,7 +78,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/cv/*/download-pdf").permitAll()
 
                         // Ver perfil público de profesional
-                        .requestMatchers(HttpMethod.GET, "/api/professionals/**").permitAll()
+                        // Profesionales - Endpoints PÚBLICOS (solo lectura específica)
+                        .requestMatchers(HttpMethod.GET, "/api/professionals/search").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/professionals/search/top").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/professionals/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/professionals").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/professionals/{id}/can-change-workplace").permitAll()
 
                         // Listar restaurantes (público)
                         .requestMatchers(HttpMethod.GET, "/api/restaurants", "/api/restaurants/*").permitAll()

@@ -11,14 +11,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Configuration
 public class RateLimitConfig {
-    
+
     private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
 
     /**
      * Rate limiter para login/register: 5 intentos por minuto
      */
     public Bucket resolveAuthBucket(String key) {
-        return cache.computeIfAbsent(key, k -> createAuthBucket());
+        return cache.computeIfAbsent("auth:" + key, k -> createAuthBucket());
     }
 
     private Bucket createAuthBucket() {
@@ -32,7 +32,7 @@ public class RateLimitConfig {
      * Rate limiter para APIs públicas: 100 requests por minuto
      */
     public Bucket resolvePublicApiBucket(String key) {
-        return cache.computeIfAbsent(key, k -> createPublicApiBucket());
+        return cache.computeIfAbsent("public:" + key, k -> createPublicApiBucket());
     }
 
     private Bucket createPublicApiBucket() {
@@ -46,7 +46,7 @@ public class RateLimitConfig {
      * Rate limiter para APIs autenticadas: 1000 requests por hora
      */
     public Bucket resolveAuthenticatedApiBucket(String key) {
-        return cache.computeIfAbsent(key, k -> createAuthenticatedApiBucket());
+        return cache.computeIfAbsent("authenticated:" + key, k -> createAuthenticatedApiBucket());
     }
 
     private Bucket createAuthenticatedApiBucket() {
@@ -60,7 +60,7 @@ public class RateLimitConfig {
      * Rate limiter estricto para password reset: 3 intentos por hora
      */
     public Bucket resolvePasswordResetBucket(String key) {
-        return cache.computeIfAbsent(key, k -> createPasswordResetBucket());
+        return cache.computeIfAbsent("reset:" + key, k -> createPasswordResetBucket());
     }
 
     private Bucket createPasswordResetBucket() {
