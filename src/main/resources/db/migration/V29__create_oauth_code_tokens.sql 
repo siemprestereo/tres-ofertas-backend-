@@ -1,0 +1,12 @@
+CREATE TABLE oauth_code_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(64) NOT NULL UNIQUE,
+    user_id BIGINT NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    expiry_date DATETIME NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT fk_oauth_code_user FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE
+);
+
+-- Índice para búsqueda rápida por código
+CREATE INDEX idx_oauth_code ON oauth_code_tokens(code, used);

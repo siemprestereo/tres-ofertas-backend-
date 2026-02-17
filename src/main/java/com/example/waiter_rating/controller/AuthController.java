@@ -4,6 +4,7 @@ import com.example.waiter_rating.model.*;
 import com.example.waiter_rating.repository.*;
 import com.example.waiter_rating.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,12 +16,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
+@Slf4j
 public class AuthController {
 
     private final AppUserRepo appUserRepo;
@@ -29,6 +32,7 @@ public class AuthController {
     private final RatingRepo ratingRepo;
     private final QrTokenRepo qrCodeRepo;
     private final JwtService jwtService;
+    private final OAuthCodeTokenRepo oAuthCodeTokenRepo;
 
     private static final String UPLOAD_DIR = "uploads/profiles/";
 
@@ -37,18 +41,101 @@ public class AuthController {
                           CvRepo cvRepo,
                           RatingRepo ratingRepo,
                           QrTokenRepo qrCodeRepo,
-                          JwtService jwtService) {
+                          JwtService jwtService,
+                          OAuthCodeTokenRepo oAuthCodeTokenRepo) {
         this.appUserRepo = appUserRepo;
         this.passwordEncoder = passwordEncoder;
         this.cvRepo = cvRepo;
         this.ratingRepo = ratingRepo;
         this.qrCodeRepo = qrCodeRepo;
         this.jwtService = jwtService;
+        this.oAuthCodeTokenRepo = oAuthCodeTokenRepo;
 
         try {
             Files.createDirectories(Paths.get(UPLOAD_DIR));
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Intercambia un código temporal OAuth por un JWT real.
+     * El código es de un solo uso y expira en 60 segundos.
+     */
+    @PostMapping("/exchange-code")
+    public ResponseEntity<?> exchangeCode(@RequestBody Map<String, String> request) {
+        String code = request.get("code");
+
+        if (code == null || code.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Código requerido"));
+        }
+
+        Optional<OAuthCodeToken> codeTokenOpt = oAuthCodeTokenRepo.findByCodeAndUsedFalse(code);
+
+        if (codeTokenOpt.isEmpty()) {
+            log.warn("Intento de intercambio con código inválido o ya usado: {}", code);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Código inválido o ya utilizado"));
+        }
+
+        OAuthCodeToken codeToken = codeTokenOpt.get();
+
+        // Verificar expiración
+        if (codeToken.isExpired()) {
+            log.warn("Intento de intercambio con código expirado: {}", code);
+            codeToken.setUsed(true);
+            oAuthCodeTokenRepo.save(codeToken);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Código expirado"));
+        }
+
+        // Marcar como usado inmediatamente (un solo uso)
+        codeToken.setUsed(true);
+        oAuthCodeTokenRepo.save(codeToken);
+
+        // Generar el JWT real
+        AppUser user = codeToken.getUser();
+        UserRole role = codeToken.getRole();
+
+        String token = jwtService.generateToken(
+                user.getId(),
+                role.name(),
+                user.getEmail(),
+                user.getName()
+        );
+
+        log.info("Código OAuth intercambiado exitosamente para: {}", user.getEmail());
+
+        // Limpiar códigos expirados/usados (limpieza oportunista)
+        try {
+            oAuthCodeTokenRepo.deleteExpiredOrUsed(LocalDateTime.now());
+        } catch (Exception e) {
+            log.debug("Limpieza de códigos expirados omitida: {}", e.getMessage());
+        }
+
+        // Devolver token + datos del usuario
+        if (role == UserRole.PROFESSIONAL) {
+            double reputationScore = user.getReputationScore() != null ? user.getReputationScore() : 0.0;
+            int totalRatings = user.getTotalRatings() != null ? user.getTotalRatings() : 0;
+
+            return ResponseEntity.ok(Map.of(
+                    "token", token,
+                    "id", user.getId(),
+                    "email", user.getEmail(),
+                    "name", user.getName(),
+                    "userType", "PROFESSIONAL",
+                    "reputationScore", reputationScore,
+                    "totalRatings", totalRatings
+            ));
+        } else {
+            return ResponseEntity.ok(Map.of(
+                    "token", token,
+                    "id", user.getId(),
+                    "email", user.getEmail(),
+                    "name", user.getName(),
+                    "userType", "CLIENT"
+            ));
         }
     }
 

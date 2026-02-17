@@ -1,10 +1,11 @@
 package com.example.waiter_rating.security;
 
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.OAuthCodeToken;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
+import com.example.waiter_rating.repository.OAuthCodeTokenRepo;
 import com.example.waiter_rating.service.ClientService;
-import com.example.waiter_rating.service.JwtService;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,27 +21,28 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @Slf4j
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final AppUserRepo appUserRepo;
+    private final OAuthCodeTokenRepo oAuthCodeTokenRepo;
     private final ClientService clientService;
     private final ProfessionalService professionalService;
-    private final JwtService jwtService;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
     public OAuth2LoginSuccessHandler(AppUserRepo appUserRepo,
+                                     OAuthCodeTokenRepo oAuthCodeTokenRepo,
                                      ClientService clientService,
-                                     ProfessionalService professionalService,
-                                     JwtService jwtService) {
+                                     ProfessionalService professionalService) {
         this.appUserRepo = appUserRepo;
+        this.oAuthCodeTokenRepo = oAuthCodeTokenRepo;
         this.clientService = clientService;
         this.professionalService = professionalService;
-        this.jwtService = jwtService;
     }
 
     @Override
@@ -57,12 +59,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String registrationId = ((OAuth2AuthenticationToken) authentication).getAuthorizedClientRegistrationId();
         String userType = registrationId.equals("google-professional") ? "professional" : "client";
 
-        System.out.println("🔍 LOGIN CON GOOGLE:");
-        System.out.println("   Email: " + email);
-        System.out.println("   Name: " + name);
-        System.out.println("   Google ID: " + googleId);
-        System.out.println("   Registration ID: " + registrationId);
-        System.out.println("   User Type: " + userType);
+        log.info("Login con Google - Email: {}, Tipo: {}", email, userType);
 
         Optional<AppUser> existingUser = appUserRepo.findByEmail(email);
 
@@ -73,15 +70,15 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
                 // Si ya existe y tiene professional configurado
                 if (user.getProfessionType() != null) {
-                    System.out.println("✅ Profesional existente autenticado: " + user.getName());
+                    log.info("Profesional existente autenticado: {}", user.getName());
                     user.setActiveRole(UserRole.PROFESSIONAL);
                     appUserRepo.save(user);
-                    authenticateAndRedirect(request, response, user, UserRole.PROFESSIONAL);
+                    generateCodeAndRedirect(request, response, user, UserRole.PROFESSIONAL);
                     return;
                 }
 
                 // Si existe pero solo como client, error
-                System.out.println("❌ Error: Email ya registrado como Cliente");
+                log.warn("Email ya registrado como Cliente: {}", email);
                 String errorUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-login")
                         .queryParam("error", "email_already_registered_as_client")
                         .build()
@@ -91,9 +88,9 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             }
 
             // No existe, crear nuevo professional
-            System.out.println("➕ Creando nuevo profesional");
+            log.info("Creando nuevo profesional: {}", email);
             AppUser newProfessional = professionalService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
-            authenticateAndRedirect(request, response, newProfessional, UserRole.PROFESSIONAL);
+            generateCodeAndRedirect(request, response, newProfessional, UserRole.PROFESSIONAL);
             return;
         }
 
@@ -104,7 +101,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
                 // Si tiene professional configurado, error
                 if (user.getProfessionType() != null) {
-                    System.out.println("❌ Error: Email ya registrado como Profesional");
+                    log.warn("Email ya registrado como Profesional: {}", email);
                     String errorUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-login")
                             .queryParam("error", "email_already_registered_as_professional")
                             .build()
@@ -114,36 +111,38 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 }
 
                 // Si existe como client
-                System.out.println("✅ Cliente existente autenticado: " + user.getName());
+                log.info("Cliente existente autenticado: {}", user.getName());
                 user.setActiveRole(UserRole.CLIENT);
                 appUserRepo.save(user);
-                authenticateAndRedirect(request, response, user, UserRole.CLIENT);
+                generateCodeAndRedirect(request, response, user, UserRole.CLIENT);
                 return;
             }
 
             // No existe, crear nuevo client
-            System.out.println("➕ Creando nuevo cliente");
+            log.info("Creando nuevo cliente: {}", email);
             AppUser newClient = clientService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
-            authenticateAndRedirect(request, response, newClient, UserRole.CLIENT);
+            generateCodeAndRedirect(request, response, newClient, UserRole.CLIENT);
             return;
         }
     }
 
-    private void authenticateAndRedirect(HttpServletRequest request,
+    /**
+     * Genera un código temporal de un solo uso y redirige al frontend con ?code=xxx
+     * El frontend luego intercambia este código por el JWT real via POST /api/auth/exchange-code
+     */
+    private void generateCodeAndRedirect(HttpServletRequest request,
                                          HttpServletResponse response,
                                          AppUser user,
                                          UserRole role) throws IOException {
 
-        // Generamos el token (que ahora durará 15 días según tu properties)
-        String token = jwtService.generateToken(
-                user.getId(),
-                role.name(),
-                user.getEmail(),
-                user.getName()
-        );
+        // Generar código único
+        String code = UUID.randomUUID().toString().replace("-", "");
 
-        // Cambiamos System.out por loggers (más profesional y seguro)
-        log.info("Sesión iniciada exitosamente para el usuario con email: {}", user.getEmail());
+        // Guardar en base de datos (expira en 60 segundos, un solo uso)
+        OAuthCodeToken codeToken = new OAuthCodeToken(code, user, role);
+        oAuthCodeTokenRepo.save(codeToken);
+
+        log.info("Código OAuth generado para usuario: {}", user.getEmail());
 
         String redirectUrl;
         if (role == UserRole.PROFESSIONAL) {
@@ -151,7 +150,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             String path = hasCompleteProfile ? "/professional-dashboard" : "/professional-register";
 
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(frontendUrl + path)
-                    .queryParam("token", token);
+                    .queryParam("code", code);
 
             if (!hasCompleteProfile) {
                 builder.queryParam("step", "complete-profile");
@@ -159,7 +158,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             redirectUrl = builder.build().toUriString();
         } else {
             redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-dashboard")
-                    .queryParam("token", token)
+                    .queryParam("code", code)
                     .build()
                     .toUriString();
         }
