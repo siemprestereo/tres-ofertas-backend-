@@ -41,31 +41,35 @@ public class ProfessionalController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<?> searchProfessionals(@RequestParam String query) {
+    public ResponseEntity<?> searchProfessionals(
+            @RequestParam String query,
+            @RequestParam(required = false) String location) {  // ← AGREGAR
         try {
             if (query == null || query.trim().isEmpty()) {
                 return ResponseEntity.ok(List.of());
             }
 
             String searchTerm = query.toLowerCase().trim();
+            String locationTerm = (location != null && !location.isBlank())
+                    ? location.toLowerCase().trim()
+                    : null;
 
             List<AppUser> professionals = appUserRepo.findSearchableProfessionals().stream()
                     .filter(p -> p.getWorkHistory() != null &&
                             p.getWorkHistory().stream().anyMatch(wh -> wh.getIsActive()))
                     .filter(p -> {
-                        if (p.getName() != null && p.getName().toLowerCase().contains(searchTerm)) {
-                            return true;
-                        }
+                        if (p.getName() != null && p.getName().toLowerCase().contains(searchTerm)) return true;
                         if (p.getProfessionType() != null) {
                             String professionName = translateProfession(p.getProfessionType());
-                            if (professionName.toLowerCase().contains(searchTerm)) {
-                                return true;
-                            }
+                            if (professionName.toLowerCase().contains(searchTerm)) return true;
                         }
-                        if (p.getLocation() != null && p.getLocation().toLowerCase().contains(searchTerm)) {
-                            return true;
-                        }
+                        if (p.getLocation() != null && p.getLocation().toLowerCase().contains(searchTerm)) return true;
                         return false;
+                    })
+                    // ← AGREGAR este filtro
+                    .filter(p -> {
+                        if (locationTerm == null) return true;
+                        return p.getLocation() != null && p.getLocation().toLowerCase().contains(locationTerm);
                     })
                     .collect(Collectors.toList());
 

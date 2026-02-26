@@ -144,6 +144,7 @@ public class AuthController {
         String email = request.get("email");
         String password = request.get("password");
         String name = request.get("name");
+        String location = request.get("location");
         String professionType = request.get("professionType");
         String professionalTitle = request.get("professionalTitle");
 
@@ -173,6 +174,7 @@ public class AuthController {
                 .email(email)
                 .password(passwordEncoder.encode(password))
                 .activeRole(UserRole.PROFESSIONAL)
+                .location(location)
                 .professionType(profession)
                 .professionalTitle(professionalTitle)
                 .reputationScore(0.0)
