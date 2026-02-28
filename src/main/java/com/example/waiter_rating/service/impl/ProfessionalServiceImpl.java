@@ -217,6 +217,8 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         response.setTotalRatings(professional.getTotalRatings());
         response.setMonthlyWorkplaceChanges(professional.getMonthlyWorkplaceChanges());
         response.setCanChangeWorkplace(canChangeWorkplace(professional));
+        response.setLocation(professional.getLocation());
+        response.setProfessionalTitle(professional.getProfessionalTitle());
         return response;
     }
 

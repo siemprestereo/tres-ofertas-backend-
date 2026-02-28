@@ -13,8 +13,10 @@ public class ProfessionalResponse {
     private String profilePicture;
     private Boolean emailVerified;
     private String provider;
-    private ProfessionType professionType; // NUEVO
+    private ProfessionType professionType;
     private LocalDateTime createdAt;
+    private String location;
+    private String professionalTitle;
 
     // Datos de reputación
     private Double averageRating;
