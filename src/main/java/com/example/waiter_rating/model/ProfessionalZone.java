@@ -1,6 +1,7 @@
 package com.example.waiter_rating.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,6 +20,7 @@ public class ProfessionalZone {
 
     @ManyToOne
     @JoinColumn(name = "cv_id", nullable = false)
+    @JsonIgnore
     private Cv cv;
 
     @Column(nullable = false, length = 100)
