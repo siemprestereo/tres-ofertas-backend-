@@ -4,6 +4,7 @@ import com.example.waiter_rating.dto.request.CvDescriptionRequest;
 import com.example.waiter_rating.dto.request.WorkHistoryRequest;
 import com.example.waiter_rating.dto.response.CvExperienceItem;
 import com.example.waiter_rating.dto.response.CvPublicResponse;
+import com.example.waiter_rating.dto.response.ZoneResponse;
 import com.example.waiter_rating.model.*;
 import com.example.waiter_rating.repository.ProfessionalZoneRepo;
 import com.example.waiter_rating.repository.RatingRepo;
@@ -737,6 +738,11 @@ public class CvController {
         // Education y Certifications
         dto.setEducation(educationService.getEducationByProfessional(p.getId()));
         dto.setCertifications(certificationService.getCertificationsByProfessional(p.getId()));
+
+        List<ZoneResponse> zones = professionalZoneRepo.findByCvId(cv.getId()).stream()
+                .map(z -> { ZoneResponse zr = new ZoneResponse(); zr.setId(z.getId()); zr.setProvincia(z.getProvincia()); zr.setZona(z.getZona()); return zr; })
+                .toList();
+        dto.setZones(zones);
 
         return dto;
     }

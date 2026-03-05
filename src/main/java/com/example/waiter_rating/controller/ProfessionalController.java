@@ -6,6 +6,7 @@ import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
+import com.example.waiter_rating.repository.ProfessionalZoneRepo;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,10 +31,14 @@ public class ProfessionalController {
 
     private final ProfessionalService professionalService;
     private final AppUserRepo appUserRepo;
+    private final ProfessionalZoneRepo professionalZoneRepo;
 
-    public ProfessionalController(ProfessionalService professionalService, AppUserRepo appUserRepo) {
+    public ProfessionalController(ProfessionalService professionalService,
+                                  AppUserRepo appUserRepo,
+                                  ProfessionalZoneRepo professionalZoneRepo) {
         this.professionalService = professionalService;
         this.appUserRepo = appUserRepo;
+        this.professionalZoneRepo = professionalZoneRepo;
     }
 
     @PostMapping
@@ -43,7 +50,7 @@ public class ProfessionalController {
     @GetMapping("/search")
     public ResponseEntity<?> searchProfessionals(
             @RequestParam String query,
-            @RequestParam(required = false) String location) {  // ← AGREGAR
+            @RequestParam(required = false) String location) {
         try {
             if (query == null || query.trim().isEmpty()) {
                 return ResponseEntity.ok(List.of());
@@ -66,10 +73,16 @@ public class ProfessionalController {
                         if (p.getLocation() != null && p.getLocation().toLowerCase().contains(searchTerm)) return true;
                         return false;
                     })
-                    // ← AGREGAR este filtro
                     .filter(p -> {
                         if (locationTerm == null) return true;
-                        return p.getLocation() != null && p.getLocation().toLowerCase().contains(locationTerm);
+                        // Filtrar por ubicación personal O por zonas de trabajo
+                        if (p.getLocation() != null && p.getLocation().toLowerCase().contains(locationTerm)) return true;
+                        if (p.getCv() != null) {
+                            return professionalZoneRepo.findByCvId(p.getCv().getId()).stream()
+                                    .anyMatch(z -> z.getProvincia().toLowerCase().contains(locationTerm)
+                                            || z.getZona().toLowerCase().contains(locationTerm));
+                        }
+                        return false;
                     })
                     .collect(Collectors.toList());
 
@@ -85,7 +98,6 @@ public class ProfessionalController {
                     .body(Map.of("error", "Error en búsqueda: " + e.getMessage()));
         }
     }
-
 
     @GetMapping("/search/top")
     public ResponseEntity<?> getTopProfessionals() {
@@ -112,25 +124,19 @@ public class ProfessionalController {
     public ResponseEntity<?> getMySearchableStatus() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
             if (authentication == null || authentication.getPrincipal() == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "No autenticado"));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "No autenticado"));
             }
 
             String email = authentication.getPrincipal().toString();
-            System.out.println("✅ Email obtenido: " + email);
-
             Optional<AppUser> professionalOpt = appUserRepo.findByEmail(email);
 
             if (professionalOpt.isEmpty() || !UserRole.PROFESSIONAL.equals(professionalOpt.get().getActiveRole())) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "Profesional no encontrado"));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Profesional no encontrado"));
             }
 
             AppUser professional = professionalOpt.get();
             Boolean searchable = professional.getSearchable();
-
             return ResponseEntity.ok(Map.of("searchable", searchable != null ? searchable : false));
 
         } catch (Exception e) {
@@ -144,28 +150,21 @@ public class ProfessionalController {
     public ResponseEntity<?> updateMySearchable(@RequestBody Map<String, Boolean> request) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
             if (authentication == null || authentication.getPrincipal() == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "No autenticado"));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "No autenticado"));
             }
 
             String email = authentication.getPrincipal().toString();
-            System.out.println("✅ Email obtenido: " + email);
-
             Optional<AppUser> professionalOpt = appUserRepo.findByEmail(email);
 
             if (professionalOpt.isEmpty() || !UserRole.PROFESSIONAL.equals(professionalOpt.get().getActiveRole())) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "Profesional no encontrado"));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Profesional no encontrado"));
             }
 
             AppUser professional = professionalOpt.get();
-
             Boolean searchable = request.get("searchable");
             if (searchable == null) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "El campo 'searchable' es requerido"));
+                return ResponseEntity.badRequest().body(Map.of("error", "El campo 'searchable' es requerido"));
             }
 
             professional.setSearchable(searchable);
@@ -173,9 +172,7 @@ public class ProfessionalController {
 
             return ResponseEntity.ok(Map.of(
                     "searchable", searchable,
-                    "message", searchable
-                            ? "Perfil visible en búsquedas"
-                            : "Perfil oculto de búsquedas"
+                    "message", searchable ? "Perfil visible en búsquedas" : "Perfil oculto de búsquedas"
             ));
 
         } catch (Exception e) {
@@ -194,34 +191,26 @@ public class ProfessionalController {
     public ResponseEntity<?> toggleSearchable() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
             if (authentication == null || authentication.getPrincipal() == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "No autenticado"));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "No autenticado"));
             }
 
             String email = authentication.getPrincipal().toString();
-
             Optional<AppUser> professionalOpt = appUserRepo.findByEmail(email);
 
             if (professionalOpt.isEmpty() || !UserRole.PROFESSIONAL.equals(professionalOpt.get().getActiveRole())) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "Profesional no encontrado"));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Profesional no encontrado"));
             }
 
             AppUser professional = professionalOpt.get();
-
             Boolean currentValue = professional.getSearchable();
             Boolean newValue = (currentValue == null || !currentValue);
             professional.setSearchable(newValue);
-
             appUserRepo.save(professional);
 
             return ResponseEntity.ok(Map.of(
                     "searchable", professional.getSearchable(),
-                    "message", professional.getSearchable()
-                            ? "Perfil activado en búsquedas"
-                            : "Perfil desactivado en búsquedas"
+                    "message", professional.getSearchable() ? "Perfil activado en búsquedas" : "Perfil desactivado en búsquedas"
             ));
 
         } catch (Exception e) {
@@ -241,7 +230,6 @@ public class ProfessionalController {
     @GetMapping
     public ResponseEntity<List<ProfessionalResponse>> listAll(
             @RequestParam(required = false) ProfessionType professionType) {
-
         if (professionType != null) {
             return ResponseEntity.ok(professionalService.listByProfessionType(professionType));
         }
@@ -282,14 +270,28 @@ public class ProfessionalController {
     }
 
     private Map<String, Object> toSearchResponse(AppUser p) {
-        return Map.of(
-                "id", p.getId(),
-                "name", p.getName() != null ? p.getName() : "",
-                "professionType", p.getProfessionType() != null ? p.getProfessionType().toString() : "",
-                "location", p.getLocation() != null ? p.getLocation() : "",
-                "reputationScore", p.getReputationScore() != null ? p.getReputationScore() : 0.0,
-                "totalRatings", p.getTotalRatings() != null ? p.getTotalRatings() : 0
-        );
+        List<Map<String, Object>> zones = new ArrayList<>();
+        if (p.getCv() != null) {
+            zones = professionalZoneRepo.findByCvId(p.getCv().getId()).stream()
+                    .map(z -> {
+                        Map<String, Object> zMap = new HashMap<>();
+                        zMap.put("id", z.getId());
+                        zMap.put("provincia", z.getProvincia());
+                        zMap.put("zona", z.getZona());
+                        return zMap;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", p.getId());
+        response.put("name", p.getName() != null ? p.getName() : "");
+        response.put("professionType", p.getProfessionType() != null ? p.getProfessionType().toString() : "");
+        response.put("location", p.getLocation() != null ? p.getLocation() : "");
+        response.put("reputationScore", p.getReputationScore() != null ? p.getReputationScore() : 0.0);
+        response.put("totalRatings", p.getTotalRatings() != null ? p.getTotalRatings() : 0);
+        response.put("zones", zones);
+        return response;
     }
 
     private String translateProfession(ProfessionType type) {

@@ -19,7 +19,11 @@ public class CvPublicResponse {
     private Double reputationScore;
     private Integer totalRatings;
 
+    private List<ZoneResponse> zones;
+
     private List<CvExperienceItem> workHistory;
     private List<EducationResponse> education;
     private List<CertificationResponse> certifications;
+
+
 }

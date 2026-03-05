@@ -2,6 +2,7 @@ package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.FavoriteProfessionalResponse;
 import com.example.waiter_rating.dto.response.WorkHistoryResponse;
+import com.example.waiter_rating.dto.response.ZoneResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.FavoriteProfessional;
 import com.example.waiter_rating.model.Rating;
@@ -9,6 +10,7 @@ import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.FavoriteProfessionalRepo;
+import com.example.waiter_rating.repository.ProfessionalZoneRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.FavoriteProfessionalService;
 import org.springframework.stereotype.Service;
@@ -25,14 +27,17 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
     private final FavoriteProfessionalRepo favoriteProfessionalRepo;
     private final AppUserRepo appUserRepo;
     private final RatingRepo ratingRepo;
+    private final ProfessionalZoneRepo professionalZoneRepo;
 
     public FavoriteProfessionalServiceImpl(
             FavoriteProfessionalRepo favoriteProfessionalRepo,
             AppUserRepo appUserRepo,
-            RatingRepo ratingRepo) {
+            RatingRepo ratingRepo,
+            ProfessionalZoneRepo professionalZoneRepo) {
         this.favoriteProfessionalRepo = favoriteProfessionalRepo;
         this.appUserRepo = appUserRepo;
         this.ratingRepo = ratingRepo;
+        this.professionalZoneRepo = professionalZoneRepo;
     }
 
     @Override
@@ -57,9 +62,6 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .build();
 
         favorite = favoriteProfessionalRepo.save(favorite);
-
-        System.out.println("✅ Profesional " + professionalId + " agregado a favoritos del cliente " + clientId);
-
         return toResponse(favorite);
     }
 
@@ -69,10 +71,7 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
         if (!favoriteProfessionalRepo.existsByClientIdAndProfessionalId(clientId, professionalId)) {
             throw new IllegalArgumentException("Este profesional no está en tus favoritos");
         }
-
         favoriteProfessionalRepo.deleteByClientIdAndProfessionalId(clientId, professionalId);
-
-        System.out.println("✅ Profesional " + professionalId + " eliminado de favoritos del cliente " + clientId);
     }
 
     @Override
@@ -84,10 +83,9 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
     @Override
     @Transactional(readOnly = true)
     public List<FavoriteProfessionalResponse> listFavorites(Long clientId) {
-        List<FavoriteProfessional> favorites = favoriteProfessionalRepo
-                .findByClientIdOrderBySavedAtDesc(clientId);
-
-        return favorites.stream()
+        return favoriteProfessionalRepo
+                .findByClientIdOrderBySavedAtDesc(clientId)
+                .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -95,14 +93,10 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
     @Override
     @Transactional(readOnly = true)
     public List<FavoriteProfessionalResponse> listFavoritesWithStats(
-            Long clientId,
-            LocalDate startDate,
-            LocalDate endDate) {
-
-        List<FavoriteProfessional> favorites = favoriteProfessionalRepo
-                .findByClientIdOrderBySavedAtDesc(clientId);
-
-        return favorites.stream()
+            Long clientId, LocalDate startDate, LocalDate endDate) {
+        return favoriteProfessionalRepo
+                .findByClientIdOrderBySavedAtDesc(clientId)
+                .stream()
                 .map(fav -> toResponseWithStats(fav, startDate, endDate))
                 .collect(Collectors.toList());
     }
@@ -113,10 +107,8 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
         FavoriteProfessional favorite = favoriteProfessionalRepo
                 .findByClientIdAndProfessionalId(clientId, professionalId)
                 .orElseThrow(() -> new IllegalArgumentException("Favorito no encontrado"));
-
         favorite.setNotes(notes);
         favorite = favoriteProfessionalRepo.save(favorite);
-
         return toResponse(favorite);
     }
 
@@ -124,6 +116,21 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
     @Transactional(readOnly = true)
     public long countFavorites(Long clientId) {
         return favoriteProfessionalRepo.countByClientId(clientId);
+    }
+
+    // ========== HELPERS ==========
+
+    private List<ZoneResponse> getZones(AppUser prof) {
+        if (prof.getCv() == null) return List.of();
+        return professionalZoneRepo.findByCvId(prof.getCv().getId()).stream()
+                .map(z -> {
+                    ZoneResponse zr = new ZoneResponse();
+                    zr.setId(z.getId());
+                    zr.setProvincia(z.getProvincia());
+                    zr.setZona(z.getZona());
+                    return zr;
+                })
+                .collect(Collectors.toList());
     }
 
     private FavoriteProfessionalResponse toResponse(FavoriteProfessional favorite) {
@@ -145,24 +152,19 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .savedAt(favorite.getSavedAt())
                 .notes(favorite.getNotes())
                 .workHistory(workHistoryList)
+                .zones(getZones(prof))
                 .build();
     }
 
     private FavoriteProfessionalResponse toResponseWithStats(
-            FavoriteProfessional favorite,
-            LocalDate startDate,
-            LocalDate endDate) {
+            FavoriteProfessional favorite, LocalDate startDate, LocalDate endDate) {
 
         AppUser prof = favorite.getProfessional();
-
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
         List<Rating> allRatingsInPeriod = ratingRepo.findByProfessionalIdAndCreatedAtBetween(
-                prof.getId(),
-                startDateTime,
-                endDateTime
-        );
+                prof.getId(), startDateTime, endDateTime);
 
         Double generalAvgScore = allRatingsInPeriod.stream()
                 .mapToDouble(Rating::getScore)
@@ -185,6 +187,7 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .savedAt(favorite.getSavedAt())
                 .notes(favorite.getNotes())
                 .workHistory(workHistoryList)
+                .zones(getZones(prof))
                 .build();
     }
 
@@ -206,17 +209,13 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .mapToDouble(Rating::getScore)
                 .average()
                 .orElse(0.0);
-
         response.setRatingsCountInPeriod(allWorkRatings.size());
         response.setAvgScoreInPeriod(Math.round(avgScore * 10.0) / 10.0);
-
         return response;
     }
 
     private WorkHistoryResponse mapWorkHistoryWithStats(
-            WorkHistory work,
-            LocalDateTime startDateTime,
-            LocalDateTime endDateTime) {
+            WorkHistory work, LocalDateTime startDateTime, LocalDateTime endDateTime) {
 
         WorkHistoryResponse response = new WorkHistoryResponse();
         response.setId(work.getId());
@@ -231,19 +230,13 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
         response.setReferenceContact(work.getReferenceContact());
 
         List<Rating> workRatingsInPeriod = ratingRepo.findByWorkHistoryIdAndCreatedAtBetween(
-                work.getId(),
-                startDateTime,
-                endDateTime
-        );
-
+                work.getId(), startDateTime, endDateTime);
         Double avgScore = workRatingsInPeriod.stream()
                 .mapToDouble(Rating::getScore)
                 .average()
                 .orElse(0.0);
-
         response.setRatingsCountInPeriod(workRatingsInPeriod.size());
         response.setAvgScoreInPeriod(Math.round(avgScore * 10.0) / 10.0);
-
         return response;
     }
 }
