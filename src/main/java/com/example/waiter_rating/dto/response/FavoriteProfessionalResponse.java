@@ -21,7 +21,7 @@ public class FavoriteProfessionalResponse {
     private Integer totalRatings;
     private LocalDateTime savedAt;
     private String notes;
-    private List<ZoneResponse> zones;
+    private List<ZoneResponse> zones; //added
 
 
     private List<WorkHistoryResponse> workHistory;
