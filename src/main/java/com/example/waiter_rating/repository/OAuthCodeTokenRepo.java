@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -21,4 +22,6 @@ public interface OAuthCodeTokenRepo extends JpaRepository<OAuthCodeToken, Long> 
     @Modifying
     @Query("DELETE FROM OAuthCodeToken t WHERE t.used = true OR t.expiryDate < :now")
     int deleteExpiredOrUsed(LocalDateTime now);
+
+    List<OAuthCodeToken> findByUserId(Long userId);
 }

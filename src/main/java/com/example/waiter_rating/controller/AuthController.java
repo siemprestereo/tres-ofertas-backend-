@@ -418,6 +418,9 @@ public class AuthController {
 
             AppUser user = userOpt.get();
 
+            // Limpiar OAuth code tokens (ambos roles)
+            oAuthCodeTokenRepo.deleteAll(oAuthCodeTokenRepo.findByUserId(authenticatedUserId));
+
             if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
                 if (user.getCv() != null) cvRepo.delete(user.getCv());
                 ratingRepo.deleteAll(ratingRepo.findByProfessionalId(authenticatedUserId));
