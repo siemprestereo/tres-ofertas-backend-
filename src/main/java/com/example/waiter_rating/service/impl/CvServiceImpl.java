@@ -29,14 +29,8 @@ public class CvServiceImpl implements CvService {
     @Override
     @Transactional
     public Cv getOrCreateForProfessional(Long professionalId) {
-        // ✅ ARREGLADO: Solo verificar que el usuario existe, sin filtrar por rol
         AppUser professional = appUserRepo.findById(professionalId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + professionalId));
-
-        // ✅ OPCIONAL: Validar que tiene datos de profesional configurados
-        if (professional.getProfessionType() == null) {
-            throw new IllegalStateException("El usuario no tiene configurado un tipo de profesión");
-        }
 
         Optional<Cv> existing = cvRepo.findByProfessionalId(professionalId);
 
