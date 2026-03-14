@@ -6,6 +6,7 @@ import com.example.waiter_rating.dto.response.AppUserResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.PasswordResetToken;
 import com.example.waiter_rating.model.UserRole;
+import com.example.waiter_rating.model.Cv;
 import com.example.waiter_rating.model.VerificationToken;
 import com.example.waiter_rating.model.enums.AuthProvider;
 import com.example.waiter_rating.repository.*;
@@ -269,7 +270,12 @@ public class AppUserServiceImpl implements AppUserService {
 
         if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
             if (user.getCv() != null) {
-                cvRepo.delete(user.getCv());
+                Cv cv = cvRepo.findById(user.getCv().getId()).orElse(null);
+                if (cv != null) {
+                    cv.getZones().clear();
+                    cvRepo.save(cv);
+                    cvRepo.delete(cv);
+                }
             }
             ratingRepo.deleteAll(ratingRepo.findByProfessionalId(id));
             qrTokenRepo.deleteAll(qrTokenRepo.findByProfessionalId(id));

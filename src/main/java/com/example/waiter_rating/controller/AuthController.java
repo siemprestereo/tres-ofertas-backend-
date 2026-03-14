@@ -1,6 +1,7 @@
 package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.Cv;
 import com.example.waiter_rating.model.OAuthCodeToken;
 import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.model.UserRole;
@@ -442,23 +443,24 @@ public class AuthController {
 
             AppUser user = userOpt.get();
 
-            // Limpiar OAuth code tokens (ambos roles)
             oAuthCodeTokenRepo.deleteAll(oAuthCodeTokenRepo.findByUserId(authenticatedUserId));
 
             if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
-                // Zones están en CV — borrar antes del CV
                 if (user.getCv() != null) {
-                    cvRepo.delete(user.getCv());
+                    Cv cv = cvRepo.findById(user.getCv().getId()).orElse(null);
+                    if (cv != null) {
+                        cv.getZones().clear();
+                        cvRepo.save(cv);
+                        cvRepo.delete(cv);
+                    }
                 }
                 ratingRepo.deleteAll(ratingRepo.findByProfessionalId(authenticatedUserId));
                 qrCodeRepo.deleteAll(qrCodeRepo.findByProfessionalId(authenticatedUserId));
-                // Eliminar este profesional de favoritos de otros clientes
                 favoriteProfessionalRepo.deleteAll(
                         favoriteProfessionalRepo.findByProfessionalId(authenticatedUserId)
                 );
             } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
                 ratingRepo.deleteAll(ratingRepo.findByClientId(authenticatedUserId));
-                // Eliminar favoritos guardados por este cliente
                 favoriteProfessionalRepo.deleteAll(
                         favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(authenticatedUserId)
                 );
