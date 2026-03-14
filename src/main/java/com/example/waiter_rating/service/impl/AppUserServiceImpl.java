@@ -1,9 +1,11 @@
 package com.example.waiter_rating.service.impl;
 
+import com.example.waiter_rating.dto.response.AdminStatsResponse;
 import com.example.waiter_rating.dto.response.AppUserResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.PasswordResetToken;
 import com.example.waiter_rating.model.VerificationToken;
+import com.example.waiter_rating.model.enums.AuthProvider;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.PasswordResetTokenRepository;
 import com.example.waiter_rating.repository.VerificationTokenRepository;
@@ -16,8 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.waiter_rating.dto.response.AdminUserResponse;
 
-import com.example.waiter_rating.model.enums.AuthProvider;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -220,6 +222,49 @@ public class AppUserServiceImpl implements AppUserService {
         user.setProfilePicture(photoUrl);
         repo.save(user);
         log.info("Profile picture updated for user id: {}", userId);
+    }
+
+    @Override
+    public List<AdminUserResponse> listAllForAdmin() {
+        return repo.findAll().stream()
+                .map(u -> new AdminUserResponse(
+                        u.getId(),
+                        u.getName(),
+                        u.getEmail(),
+                        u.getActiveRole().name(),
+                        u.getSuspended(),
+                        u.getEmailVerified(),
+                        u.getAuthProvider().name(),
+                        u.getCreatedAt(),
+                        u.getTotalRatings()
+                ))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void toggleSuspend(Long id) {
+        AppUser user = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
+        user.setSuspended(!user.getSuspended());
+        repo.save(user);
+        log.info("Usuario {} -> suspended: {}", id, user.getSuspended());
+    }
+
+    @Override
+    public AdminStatsResponse getAdminStats() {
+        List<AppUser> all = repo.findAll();
+        return new AdminStatsResponse(
+                (long) all.size(),
+                all.stream().filter(AppUser::isProfessional).count(),
+                all.stream().filter(AppUser::isClient).count(),
+                all.stream().filter(AppUser::getSuspended).count(),
+                all.stream().mapToLong(u -> u.getTotalRatings()).sum(),
+                all.stream().filter(AppUser::isProfessional)
+                        .mapToDouble(AppUser::getReputationScore)
+                        .average()
+                        .orElse(0.0)
+        );
     }
 
     private AppUserResponse mapToResponse(AppUser user) {
