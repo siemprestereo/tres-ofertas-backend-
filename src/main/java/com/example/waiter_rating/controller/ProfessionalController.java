@@ -75,12 +75,22 @@ public class ProfessionalController {
                     })
                     .filter(p -> {
                         if (locationTerm == null) return true;
-                        // Filtrar por ubicación personal O por zonas de trabajo
                         if (p.getLocation() != null && p.getLocation().toLowerCase().contains(locationTerm)) return true;
                         if (p.getCv() != null) {
+                            String provinciaCABA = "ciudad autónoma de buenos aires";
                             return professionalZoneRepo.findByCvId(p.getCv().getId()).stream()
-                                    .anyMatch(z -> z.getProvincia().toLowerCase().contains(locationTerm)
-                                            || z.getZona().toLowerCase().contains(locationTerm));
+                                    .anyMatch(z -> {
+                                        String zona = z.getZona().toLowerCase();
+                                        String provincia = z.getProvincia().toLowerCase();
+                                        // Match exacto por zona
+                                        if (zona.contains(locationTerm) || provincia.contains(locationTerm)) return true;
+                                        // Si tiene "todos los barrios" en CABA, coincide con cualquier barrio de CABA
+                                        if (zona.equals("todos los barrios") && provincia.equals(provinciaCABA)) {
+                                            // El cliente está buscando algo dentro de CABA
+                                            return provincia.contains(locationTerm) || provinciaCABA.contains(locationTerm);
+                                        }
+                                        return false;
+                                    });
                         }
                         return false;
                     })
