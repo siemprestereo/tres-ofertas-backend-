@@ -2,15 +2,13 @@ package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.request.RatingFromQrRequest;
 import com.example.waiter_rating.dto.request.RatingRequest;
+import com.example.waiter_rating.dto.response.AdminRatingResponse;
 import com.example.waiter_rating.model.*;
-import com.example.waiter_rating.repository.AppUserRepo;
-import com.example.waiter_rating.repository.QrTokenRepo;
-import com.example.waiter_rating.repository.RatingRepo;
-import com.example.waiter_rating.repository.BusinessRepo;
-import com.example.waiter_rating.repository.WorkHistoryRepo;
-import com.example.waiter_rating.service.RatingService;
+import com.example.waiter_rating.repository.*;
 import com.example.waiter_rating.service.ProfessionalService;
+import com.example.waiter_rating.service.RatingService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class RatingServiceImpl implements RatingService {
 
     private static final int EDIT_WINDOW_MINUTES = 30;
@@ -247,5 +246,29 @@ public class RatingServiceImpl implements RatingService {
     @Override
     public List<Rating> getRatingsByWorkHistory(Long workHistoryId) {
         return ratingRepo.findByWorkHistoryId(workHistoryId);
+    }
+    @Override
+    public List<AdminRatingResponse> listAllForAdmin() {
+        return ratingRepo.findAll().stream()
+                .map(r -> new AdminRatingResponse(
+                        r.getId(),
+                        r.getClient().getName(),
+                        r.getProfessional().getName(),
+                        r.getScore(),
+                        r.getComment(),
+                        r.getCreatedAt()
+                ))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteByAdmin(Long id) {
+        Rating rating = ratingRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Calificación no encontrada con id: " + id));
+        Long professionalId = rating.getProfessional().getId();
+        ratingRepo.delete(rating);
+        professionalService.updateProfessionalReputation(professionalId);
+        log.info("Calificación {} eliminada por admin", id);
     }
 }

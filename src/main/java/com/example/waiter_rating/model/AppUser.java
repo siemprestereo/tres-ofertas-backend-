@@ -69,6 +69,10 @@ public class AppUser {
     @Column(name = "last_role_switch_at")
     private LocalDateTime lastRoleSwitchAt;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean suspended = false;
+
     // ========== CAMPOS DE PROFESSIONAL (nullable) ==========
     @Enumerated(EnumType.STRING)
     @Column(name = "profession_type")

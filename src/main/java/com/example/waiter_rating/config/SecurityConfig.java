@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,6 +23,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
@@ -50,61 +52,40 @@ public class SecurityConfig {
                                 "/login/oauth2/**"
                         ).permitAll()
 
-                        // Auth endpoints (registro/login)
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // QRs públicos (para escanear y resolver)
                         .requestMatchers("/qr/**", "/api/qr/resolve/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/qr/{code}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/qr/resolve/{code}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/qr/dynamic").permitAll()
 
-                        // Ver los ratings públicos de un mesero
                         .requestMatchers(HttpMethod.GET, "/api/ratings/professional/**").permitAll()
-
-                        // Ver ratings públicos por workHistoryId (para CV compartido)
                         .requestMatchers(HttpMethod.GET, "/api/ratings/work-history/**").permitAll()
-
-                        // Ver estadísticas públicas de un profesional
                         .requestMatchers(HttpMethod.GET, "/api/stats/professional/**").permitAll()
-
-                        // Ver CV público
                         .requestMatchers(HttpMethod.GET, "/api/cv/professional/**").permitAll()
-
-                        // Download PDF
                         .requestMatchers("/api/cv/*/download-pdf").permitAll()
 
-                        // Ver perfil público de profesional
-                        // Profesionales - Endpoints PÚBLICOS (solo lectura específica)
                         .requestMatchers(HttpMethod.GET, "/api/professionals/search").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/professionals/search/top").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/professionals/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/professionals").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/professionals/{id}/can-change-workplace").permitAll()
 
-                        // Listar restaurantes (público)
                         .requestMatchers(HttpMethod.GET, "/api/restaurants", "/api/restaurants/*").permitAll()
 
-                        // ========== SOLO PARA TESTING (eliminar en producción) ==========
+                        // ========== ADMIN ==========
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-
-                        // ========== ENDPOINTS PROTEGIDOS (requieren autenticación) ==========
-                        // QR - Generar (solo profesionales autenticados)
+                        // ========== PROTEGIDOS ==========
                         .requestMatchers(HttpMethod.POST, "/api/qr/generate").authenticated()
-
-                        // QR - Invalidar (solo meseros autenticados)
                         .requestMatchers(HttpMethod.POST, "/api/qr/{code}/invalidate").authenticated()
-
-                        // Stats (solo meseros)
                         .requestMatchers("/api/stats/**").authenticated()
-
-                        // Cualquier otro endpoint requiere autenticación
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // ← CAMBIO: STATELESS para JWT
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)  // ← AGREGAR filtro JWT
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(oAuth2LoginSuccessHandler)
                 )
@@ -129,22 +110,13 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // 1. Cargamos el origen desde la variable que ya tienes en Railway
         if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
-            // Usamos setAllowedOrigins (más estricto y seguro para producción)
             configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         }
 
-        // 2. Métodos permitidos para Calificalo
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
-        // 3. Headers permitidos (limitamos a los necesarios)
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept"));
-
-        // 4. Permitir credenciales (fundamental para tu flujo OAuth2 y JWT)
         configuration.setAllowCredentials(true);
-
-        // 5. Exponer headers para que el Frontend (React/Vue) pueda leerlos
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

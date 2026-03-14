@@ -2,6 +2,7 @@ package com.example.waiter_rating.service;
 
 import com.example.waiter_rating.dto.request.RatingFromQrRequest;
 import com.example.waiter_rating.dto.request.RatingRequest;
+import com.example.waiter_rating.dto.response.AdminRatingResponse;
 import com.example.waiter_rating.model.Rating;
 import jakarta.validation.Valid;
 
@@ -44,5 +45,9 @@ public interface RatingService {
     List<Rating> getRatingsByWorkHistory(Long workHistoryId);
 
     List<Rating> getRatingsByClient(Long clientId, Integer limit);
+
+    // Admin
+    List<AdminRatingResponse> listAllForAdmin();
+    void deleteByAdmin(Long id);
 
 }
