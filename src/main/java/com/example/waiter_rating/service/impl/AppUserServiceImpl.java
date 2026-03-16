@@ -282,15 +282,18 @@ public class AppUserServiceImpl implements AppUserService {
                 }
             }
 
-            // Anonimizar ratings recibidas en lugar de borrarlas
             List<Rating> ratingsRecibidos = ratingRepo.findByProfessionalId(id);
             ratingsRecibidos.forEach(r -> r.setProfessional(null));
             ratingRepo.saveAll(ratingsRecibidos);
 
             qrTokenRepo.deleteAll(qrTokenRepo.findByProfessionalId(id));
             favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByProfessionalId(id));
+
         } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
-            ratingRepo.deleteAll(ratingRepo.findByClientId(id));
+            List<Rating> ratingsEmitidas = ratingRepo.findByClientId(id);
+            ratingsEmitidas.forEach(r -> r.setClient(null));
+            ratingRepo.saveAll(ratingsEmitidas);
+
             favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(id));
         }
 

@@ -28,7 +28,6 @@ public class AuthController {
     private final QrTokenRepo qrCodeRepo;
     private final JwtService jwtService;
     private final OAuthCodeTokenRepo oAuthCodeTokenRepo;
-
     private final ProfessionalZoneRepo professionalZoneRepo;
     private final FavoriteProfessionalRepo favoriteProfessionalRepo;
 
@@ -38,7 +37,9 @@ public class AuthController {
                           RatingRepo ratingRepo,
                           QrTokenRepo qrCodeRepo,
                           JwtService jwtService,
-                          OAuthCodeTokenRepo oAuthCodeTokenRepo, ProfessionalZoneRepo professionalZoneRepo, FavoriteProfessionalRepo favoriteProfessionalRepo) {
+                          OAuthCodeTokenRepo oAuthCodeTokenRepo,
+                          ProfessionalZoneRepo professionalZoneRepo,
+                          FavoriteProfessionalRepo favoriteProfessionalRepo) {
         this.appUserRepo = appUserRepo;
         this.passwordEncoder = passwordEncoder;
         this.cvRepo = cvRepo;
@@ -264,7 +265,6 @@ public class AuthController {
 
         AppUser user = userOpt.get();
 
-        // Solo permitir PROFESSIONAL y ADMIN en este endpoint
         if (!UserRole.PROFESSIONAL.equals(user.getActiveRole()) && !UserRole.ADMIN.equals(user.getActiveRole())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciales inválidas"));
         }
@@ -318,7 +318,6 @@ public class AuthController {
                 client.getId(), "CLIENT", client.getEmail(), client.getName()
         );
 
-        // Incluir token en el response del login
         var response = new java.util.HashMap<>(buildClientResponse(client));
         response.put("token", token);
         return ResponseEntity.ok(response);
@@ -418,6 +417,7 @@ public class AuthController {
     }
 
     // ========== ELIMINAR CUENTA ==========
+
     @Transactional
     @DeleteMapping("/delete-account/{userId}")
     public ResponseEntity<?> deleteAccount(@PathVariable Long userId, HttpServletRequest request) {
@@ -452,7 +452,6 @@ public class AuthController {
                     }
                 }
 
-                // Anonimizar ratings recibidas en lugar de borrarlas
                 List<Rating> ratingsRecibidos = ratingRepo.findByProfessionalId(authenticatedUserId);
                 ratingsRecibidos.forEach(r -> r.setProfessional(null));
                 ratingRepo.saveAll(ratingsRecibidos);
@@ -462,7 +461,10 @@ public class AuthController {
                         favoriteProfessionalRepo.findByProfessionalId(authenticatedUserId)
                 );
             } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
-                ratingRepo.deleteAll(ratingRepo.findByClientId(authenticatedUserId));
+                List<Rating> ratingsEmitidas = ratingRepo.findByClientId(authenticatedUserId);
+                ratingsEmitidas.forEach(r -> r.setClient(null));
+                ratingRepo.saveAll(ratingsEmitidas);
+
                 favoriteProfessionalRepo.deleteAll(
                         favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(authenticatedUserId)
                 );
@@ -502,6 +504,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Términos aceptados"));
     }
 
+    @Transactional
     @DeleteMapping("/delete-account-client/{userId}")
     public ResponseEntity<?> deleteClientAccount(@PathVariable Long userId, HttpServletRequest request) {
         Long authenticatedUserId = (Long) request.getAttribute("userId");
@@ -519,6 +522,14 @@ public class AuthController {
         if (userOpt.isEmpty() || !UserRole.CLIENT.equals(userOpt.get().getActiveRole())) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Cliente no encontrado"));
         }
+
+        List<Rating> ratingsEmitidas = ratingRepo.findByClientId(authenticatedUserId);
+        ratingsEmitidas.forEach(r -> r.setClient(null));
+        ratingRepo.saveAll(ratingsEmitidas);
+
+        favoriteProfessionalRepo.deleteAll(
+                favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(authenticatedUserId)
+        );
 
         appUserRepo.deleteById(authenticatedUserId);
         return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
