@@ -2,6 +2,7 @@ package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.dto.response.QrCreateResponse;
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.service.AuthService;
 import com.example.waiter_rating.service.QrService;
 import org.springframework.http.ResponseEntity;
@@ -15,22 +16,19 @@ public class QrController {
 
     private final QrService qrService;
     private final AuthService authService;
+    private final AppUserRepo appUserRepo;
 
-    public QrController(QrService qrService, AuthService authService) {
+    public QrController(QrService qrService, AuthService authService, AppUserRepo appUserRepo) {
         this.qrService = qrService;
         this.authService = authService;
+        this.appUserRepo = appUserRepo;
     }
 
-    /**
-     * Genera un QR dinámico (solo PROFESSIONAL autenticado)
-     * Usa el professionalId del usuario logueado automáticamente
-     */
     @PostMapping("/generate")
     public ResponseEntity<?> generateQr(
             @RequestParam(required = false) Long businessId,
             @RequestParam(defaultValue = "3") int ttlMinutes) {
 
-        // Verificar que el usuario es un Professional
         AppUser professional = authService.getCurrentProfessional()
                 .orElseThrow(() -> new IllegalStateException("Solo los professionals pueden generar QRs"));
 
@@ -44,38 +42,33 @@ public class QrController {
         return ResponseEntity.ok(resp);
     }
 
-    /**
-     * Resuelve el QR: devuelve el professionalId si está vigente
-     * (PÚBLICO - para que cualquiera pueda escanear)
-     */
     @GetMapping("/{code}")
     public ResponseEntity<?> resolve(@PathVariable String code) {
         Long professionalId = qrService.resolveProfessional(code);
+        AppUser professional = appUserRepo.findById(professionalId)
+                .orElseThrow(() -> new RuntimeException("Profesional no encontrado"));
         return ResponseEntity.ok(Map.of(
                 "professionalId", professionalId,
+                "professionalName", professional.getName(),
                 "message", "QR válido"
         ));
     }
 
-    /**
-     * Resuelve QR (endpoint alternativo - PÚBLICO)
-     */
     @GetMapping("/resolve/{code}")
     public ResponseEntity<?> resolveAlternative(@PathVariable String code) {
         Long professionalId = qrService.resolveProfessional(code);
-        return ResponseEntity.ok(Map.of("professionalId", professionalId));
+        AppUser professional = appUserRepo.findById(professionalId)
+                .orElseThrow(() -> new RuntimeException("Profesional no encontrado"));
+        return ResponseEntity.ok(Map.of(
+                "professionalId", professionalId,
+                "professionalName", professional.getName()
+        ));
     }
 
-    /**
-     * Invalida un QR antes de su expiración (solo el PROFESSIONAL dueño)
-     */
     @PostMapping("/{code}/invalidate")
     public ResponseEntity<?> invalidate(@PathVariable String code) {
-        // Verificar que es un Professional
         AppUser professional = authService.getCurrentProfessional()
                 .orElseThrow(() -> new IllegalStateException("Solo los professionals pueden invalidar QRs"));
-
-        // TODO: Verificar que el QR pertenece a este professional
 
         qrService.invalidate(code);
         return ResponseEntity.noContent().build();
