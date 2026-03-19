@@ -1,10 +1,12 @@
 package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.dto.request.RatingFromQrRequest;
-import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.dto.request.RatingRequest;
 import com.example.waiter_rating.dto.response.RatingResponse;
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.Rating;
+import com.example.waiter_rating.model.enums.ReportStatus;
+import com.example.waiter_rating.repository.RatingReportRepo;
 import com.example.waiter_rating.service.AuthService;
 import com.example.waiter_rating.service.RatingService;
 import jakarta.validation.Valid;
@@ -23,9 +25,11 @@ public class RatingController {
     private final RatingService ratingService;
     private final AuthService authService;
 
-    public RatingController(RatingService ratingService, AuthService authService) {
+    private final RatingReportRepo ratingReportRepo;
+    public RatingController(RatingService ratingService, AuthService authService, RatingReportRepo ratingReportRepo) {
         this.ratingService = ratingService;
         this.authService = authService;
+        this.ratingReportRepo = ratingReportRepo;
     }
 
     /** Crear una calificación (requiere autenticación como CLIENT) */
@@ -250,6 +254,9 @@ public class RatingController {
         dto.setUpdatedAt(r.getUpdatedAt());
         dto.setServiceDate(r.getServiceDate());
         dto.setCanEdit(r.canEditOrDelete());
+        dto.setHasPendingReport(
+                ratingReportRepo.existsByRatingIdAndStatus(r.getId(), ReportStatus.PENDING)
+        );
 
         return dto;
     }
