@@ -2,8 +2,10 @@ package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.model.*;
 import com.example.waiter_rating.repository.*;
+import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.EmailService;
 import com.example.waiter_rating.service.JwtService;
+import com.example.waiter_rating.service.RateLimiterService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -32,6 +34,8 @@ public class AuthController {
     private final ProfessionalZoneRepo professionalZoneRepo;
     private final FavoriteProfessionalRepo favoriteProfessionalRepo;
     private final EmailService emailService;
+    private final AppUserService appUserService;
+    private final RateLimiterService rateLimiter;
 
     public AuthController(AppUserRepo appUserRepo,
                           PasswordEncoder passwordEncoder,
@@ -42,7 +46,9 @@ public class AuthController {
                           OAuthCodeTokenRepo oAuthCodeTokenRepo,
                           ProfessionalZoneRepo professionalZoneRepo,
                           FavoriteProfessionalRepo favoriteProfessionalRepo,
-                          EmailService emailService) {
+                          EmailService emailService,
+                          AppUserService appUserService,
+                          RateLimiterService rateLimiter) {
         this.appUserRepo = appUserRepo;
         this.passwordEncoder = passwordEncoder;
         this.cvRepo = cvRepo;
@@ -53,6 +59,13 @@ public class AuthController {
         this.professionalZoneRepo = professionalZoneRepo;
         this.favoriteProfessionalRepo = favoriteProfessionalRepo;
         this.emailService = emailService;
+        this.appUserService = appUserService;
+        this.rateLimiter = rateLimiter;
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        return (xff != null && !xff.isBlank()) ? xff.split(",")[0].trim() : request.getRemoteAddr();
     }
 
     // ========== HELPERS PRIVADOS ==========
@@ -157,7 +170,10 @@ public class AuthController {
     // ========== REGISTRO ==========
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> register(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        if (!rateLimiter.tryConsumeRegister(getClientIp(httpRequest)))
+            return ResponseEntity.status(429).body(Map.of("error", "Demasiados intentos. Esperá unos minutos."));
+
         String email = request.get("email");
         String password = request.get("password");
         String name = request.get("name");
@@ -196,6 +212,7 @@ public class AuthController {
 
         professional = appUserRepo.save(professional);
         emailService.sendWelcomeEmail(professional.getEmail(), professional.getName());
+        appUserService.createVerificationToken(professional);
 
         String token = jwtService.generateToken(
                 professional.getId(), "PROFESSIONAL", professional.getEmail(), professional.getName()
@@ -213,7 +230,10 @@ public class AuthController {
     }
 
     @PostMapping("/register-client")
-    public ResponseEntity<?> registerClient(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> registerClient(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        if (!rateLimiter.tryConsumeRegister(getClientIp(httpRequest)))
+            return ResponseEntity.status(429).body(Map.of("error", "Demasiados intentos. Esperá unos minutos."));
+
         String email = request.get("email");
         String password = request.get("password");
         String name = request.get("name");
@@ -238,6 +258,7 @@ public class AuthController {
 
         client = appUserRepo.save(client);
         emailService.sendWelcomeEmail(client.getEmail(), client.getName());
+        appUserService.createVerificationToken(client);
 
         String token = jwtService.generateToken(
                 client.getId(), "CLIENT", client.getEmail(), client.getName()
@@ -255,7 +276,10 @@ public class AuthController {
     // ========== LOGIN ==========
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> login(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        if (!rateLimiter.tryConsumeLogin(getClientIp(httpRequest)))
+            return ResponseEntity.status(429).body(Map.of("error", "Demasiados intentos. Esperá un minuto."));
+
         String email = request.get("email");
         String password = request.get("password");
 
@@ -300,7 +324,10 @@ public class AuthController {
     }
 
     @PostMapping("/login-client")
-    public ResponseEntity<?> loginClient(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> loginClient(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        if (!rateLimiter.tryConsumeLogin(getClientIp(httpRequest)))
+            return ResponseEntity.status(429).body(Map.of("error", "Demasiados intentos. Esperá un minuto."));
+
         String email = request.get("email");
         String password = request.get("password");
 
@@ -332,6 +359,52 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         return ResponseEntity.ok(Map.of("message", "Logout exitoso"));
+    }
+
+    // ========== FORGOT / RESET PASSWORD ==========
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body, HttpServletRequest httpRequest) {
+        if (!rateLimiter.tryConsumeForgotPassword(getClientIp(httpRequest)))
+            return ResponseEntity.status(429).body(Map.of("error", "Demasiados intentos. Esperá 15 minutos."));
+
+        String email = body.get("email");
+        if (email == null || email.isBlank())
+            return ResponseEntity.badRequest().body(Map.of("error", "Email requerido"));
+
+        // Siempre responder OK para no revelar si el email existe
+        appUserService.requestPasswordReset(email);
+        return ResponseEntity.ok(Map.of("message", "Si el email está registrado, recibirás un enlace para restablecer tu contraseña."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+        String token    = body.get("token");
+        String password = body.get("password");
+
+        if (token == null || password == null)
+            return ResponseEntity.badRequest().body(Map.of("error", "Token y contraseña son requeridos"));
+
+        String passwordError = validatePassword(password);
+        if (passwordError != null)
+            return ResponseEntity.badRequest().body(Map.of("error", passwordError));
+
+        boolean ok = appUserService.resetPassword(token, password);
+        if (!ok)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "El enlace es inválido o ya expiró"));
+
+        return ResponseEntity.ok(Map.of("message", "Contraseña restablecida correctamente"));
+    }
+
+    // ========== EMAIL VERIFICATION ==========
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        boolean ok = appUserService.verifyEmail(token);
+        if (!ok)
+            return ResponseEntity.badRequest().body(Map.of("error", "El enlace es inválido o ya expiró"));
+
+        return ResponseEntity.ok(Map.of("message", "Email verificado correctamente"));
     }
 
     // ========== PERFIL ACTUAL ==========
