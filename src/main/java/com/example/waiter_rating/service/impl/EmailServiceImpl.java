@@ -25,6 +25,9 @@ public class EmailServiceImpl implements EmailService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
+    @Value("${app.mail.suggestions:hola@calificalo.com.ar}")
+    private String suggestionsEmail;
+
     @Override
     @Async
     public void sendWelcomeEmail(String toEmail, String userName) {
@@ -88,6 +91,65 @@ public class EmailServiceImpl implements EmailService {
         } catch (MessagingException e) {
             log.error("Failed to send password reset email to: {}", toEmail, e);
         }
+    }
+
+    @Override
+    @Async
+    public void sendProfessionSuggestionEmail(String professionalName, String professionalEmail, String suggestion) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(suggestionsEmail);
+            helper.setSubject("Nueva sugerencia de profesión - Calificalo");
+
+            String htmlContent = buildProfessionSuggestionTemplate(professionalName, professionalEmail, suggestion);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("Profession suggestion email sent from: {}", professionalEmail);
+        } catch (MessagingException e) {
+            log.error("Failed to send profession suggestion email from: {}", professionalEmail, e);
+        }
+    }
+
+    private String buildProfessionSuggestionTemplate(String professionalName, String professionalEmail, String suggestion) {
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 24px 30px; border-radius: 10px 10px 0 0; }
+                    .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }
+                    .suggestion-box { background: #f3f4f6; border-left: 4px solid #667eea; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 18px; font-weight: bold; color: #1f2937; }
+                    .meta { font-size: 13px; color: #6b7280; margin-top: 20px; }
+                    .footer { background: #f8f9fa; padding: 16px 20px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 10px 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h2 style="margin:0">💡 Nueva sugerencia de profesión</h2>
+                    </div>
+                    <div class="content">
+                        <p>Un profesional sugirió agregar una nueva categoría a Calificalo:</p>
+                        <div class="suggestion-box">%s</div>
+                        <div class="meta">
+                            <strong>Enviado por:</strong> %s<br>
+                            <strong>Email:</strong> %s
+                        </div>
+                    </div>
+                    <div class="footer">
+                        <p>© 2025 Calificalo. Panel interno.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """.formatted(suggestion, professionalName, professionalEmail);
     }
 
     private String buildWelcomeEmailTemplate(String userName) {

@@ -2,6 +2,7 @@ package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.model.*;
 import com.example.waiter_rating.repository.*;
+import com.example.waiter_rating.service.EmailService;
 import com.example.waiter_rating.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class AuthController {
     private final OAuthCodeTokenRepo oAuthCodeTokenRepo;
     private final ProfessionalZoneRepo professionalZoneRepo;
     private final FavoriteProfessionalRepo favoriteProfessionalRepo;
+    private final EmailService emailService;
 
     public AuthController(AppUserRepo appUserRepo,
                           PasswordEncoder passwordEncoder,
@@ -39,7 +41,8 @@ public class AuthController {
                           JwtService jwtService,
                           OAuthCodeTokenRepo oAuthCodeTokenRepo,
                           ProfessionalZoneRepo professionalZoneRepo,
-                          FavoriteProfessionalRepo favoriteProfessionalRepo) {
+                          FavoriteProfessionalRepo favoriteProfessionalRepo,
+                          EmailService emailService) {
         this.appUserRepo = appUserRepo;
         this.passwordEncoder = passwordEncoder;
         this.cvRepo = cvRepo;
@@ -49,6 +52,7 @@ public class AuthController {
         this.oAuthCodeTokenRepo = oAuthCodeTokenRepo;
         this.professionalZoneRepo = professionalZoneRepo;
         this.favoriteProfessionalRepo = favoriteProfessionalRepo;
+        this.emailService = emailService;
     }
 
     // ========== HELPERS PRIVADOS ==========
@@ -191,6 +195,7 @@ public class AuthController {
                 .build();
 
         professional = appUserRepo.save(professional);
+        emailService.sendWelcomeEmail(professional.getEmail(), professional.getName());
 
         String token = jwtService.generateToken(
                 professional.getId(), "PROFESSIONAL", professional.getEmail(), professional.getName()
@@ -232,6 +237,7 @@ public class AuthController {
                 .build();
 
         client = appUserRepo.save(client);
+        emailService.sendWelcomeEmail(client.getEmail(), client.getName());
 
         String token = jwtService.generateToken(
                 client.getId(), "CLIENT", client.getEmail(), client.getName()
