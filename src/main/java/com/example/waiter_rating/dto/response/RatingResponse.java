@@ -40,4 +40,6 @@ public class RatingResponse {
     private Boolean canEdit;
 
     private String reportStatus; // null | "PENDING" | "APPROVED" | "REJECTED"
+
+    private boolean commentModerated; // true si el comentario fue removido por moderación automática
 }

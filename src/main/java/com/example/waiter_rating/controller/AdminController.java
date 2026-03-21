@@ -4,8 +4,10 @@ import com.example.waiter_rating.dto.response.AdminRatingResponse;
 import com.example.waiter_rating.dto.response.AdminStatsResponse;
 import com.example.waiter_rating.dto.response.AdminUserResponse;
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.BannedWord;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
+import com.example.waiter_rating.repository.BannedWordRepository;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.EmailService;
 import com.example.waiter_rating.service.RatingService;
@@ -30,6 +32,7 @@ public class AdminController {
     private final RatingService ratingService;
     private final EmailService emailService;
     private final AppUserRepo appUserRepo;
+    private final BannedWordRepository bannedWordRepo;
 
     private static final Set<String> ALLOWED_ALIASES = Set.of(
         "hola@calificalo.com.ar",
@@ -111,6 +114,31 @@ public class AdminController {
 
         emailService.sendBroadcastEmail(recipients, subject, message, replyTo);
         return ResponseEntity.ok(Map.of("message", "Broadcast iniciado", "recipients", recipients.size()));
+    }
+
+    // ========== BANNED WORDS ==========
+
+    @GetMapping("/banned-words")
+    public ResponseEntity<List<BannedWord>> listBannedWords() {
+        return ResponseEntity.ok(bannedWordRepo.findAll());
+    }
+
+    @PostMapping("/banned-words")
+    public ResponseEntity<?> addBannedWord(@RequestBody Map<String, String> body) {
+        String word = body.get("word");
+        if (word == null || word.isBlank() || word.length() > 100)
+            return ResponseEntity.badRequest().body(Map.of("error", "Palabra inválida"));
+        if (bannedWordRepo.existsByWordIgnoreCase(word.trim()))
+            return ResponseEntity.badRequest().body(Map.of("error", "La palabra ya existe"));
+        BannedWord saved = bannedWordRepo.save(BannedWord.builder().word(word.trim().toLowerCase()).build());
+        return ResponseEntity.ok(saved);
+    }
+
+    @DeleteMapping("/banned-words/{id}")
+    public ResponseEntity<Void> deleteBannedWord(@PathVariable Long id) {
+        if (!bannedWordRepo.existsById(id)) return ResponseEntity.notFound().build();
+        bannedWordRepo.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
 }

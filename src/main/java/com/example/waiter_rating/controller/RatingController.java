@@ -40,7 +40,11 @@ public class RatingController {
         request.setClientId(client.getId());
 
         Rating r = ratingService.submitRating(request);
-        return ResponseEntity.ok(toResponse(r));
+        RatingResponse resp = toResponse(r);
+        if (request.getComment() != null && !request.getComment().isBlank() && r.getComment() == null) {
+            resp.setCommentModerated(true);
+        }
+        return ResponseEntity.ok(resp);
     }
 
     /** Crear calificación desde QR (requiere autenticación como CLIENT) */
@@ -55,7 +59,11 @@ public class RatingController {
         request.setClientId(client.getId());
 
         Rating r = ratingService.submitFromQr(code, request);
-        return ResponseEntity.ok(toResponse(r));
+        RatingResponse resp = toResponse(r);
+        if (request.getComment() != null && !request.getComment().isBlank() && r.getComment() == null) {
+            resp.setCommentModerated(true);
+        }
+        return ResponseEntity.ok(resp);
     }
 
     /**
@@ -80,8 +88,15 @@ public class RatingController {
             throw new IllegalStateException("Solo puede editar calificaciones dentro de los 30 minutos posteriores a su creación");
         }
 
-        return ratingService.updateRating(id, request.getScore(), request.getComment())
-                .map(r -> ResponseEntity.ok(toResponse(r)))
+        String originalComment = request.getComment();
+        return ratingService.updateRating(id, request.getScore(), originalComment)
+                .map(r -> {
+                    RatingResponse resp = toResponse(r);
+                    if (originalComment != null && !originalComment.isBlank() && r.getComment() == null) {
+                        resp.setCommentModerated(true);
+                    }
+                    return ResponseEntity.ok(resp);
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 

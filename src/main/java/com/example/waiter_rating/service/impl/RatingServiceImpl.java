@@ -5,6 +5,7 @@ import com.example.waiter_rating.dto.request.RatingRequest;
 import com.example.waiter_rating.dto.response.AdminRatingResponse;
 import com.example.waiter_rating.model.*;
 import com.example.waiter_rating.repository.*;
+import com.example.waiter_rating.service.ProfanityFilterService;
 import com.example.waiter_rating.service.ProfessionalService;
 import com.example.waiter_rating.service.RatingService;
 import jakarta.validation.Valid;
@@ -32,19 +33,22 @@ public class RatingServiceImpl implements RatingService {
     private final QrTokenRepo qrTokenRepo;
     private final WorkHistoryRepo workHistoryRepo;
     private final ProfessionalService professionalService;
+    private final ProfanityFilterService profanityFilter;
 
     public RatingServiceImpl(RatingRepo ratingRepo,
                              AppUserRepo appUserRepo,
                              BusinessRepo businessRepo,
                              QrTokenRepo qrTokenRepo,
                              WorkHistoryRepo workHistoryRepo,
-                             ProfessionalService professionalService) {
+                             ProfessionalService professionalService,
+                             ProfanityFilterService profanityFilter) {
         this.ratingRepo = ratingRepo;
         this.appUserRepo = appUserRepo;
         this.businessRepo = businessRepo;
         this.qrTokenRepo = qrTokenRepo;
         this.workHistoryRepo = workHistoryRepo;
         this.professionalService = professionalService;
+        this.profanityFilter = profanityFilter;
     }
 
     @Override
@@ -79,6 +83,8 @@ public class RatingServiceImpl implements RatingService {
 
         validateRatingCooldown(request.getClientId(), request.getProfessionalId());
 
+        String comment = profanityFilter.containsProfanity(request.getComment()) ? null : request.getComment();
+
         Rating rating = Rating.builder()
                 .professional(professional)
                 .professionalName(professional.getName())     // ← snapshot
@@ -87,7 +93,7 @@ public class RatingServiceImpl implements RatingService {
                 .workHistory(workHistory)
                 .client(client)
                 .score(request.getScore())
-                .comment(request.getComment())
+                .comment(comment)
                 .serviceDate(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -130,6 +136,8 @@ public class RatingServiceImpl implements RatingService {
 
         validateRatingCooldown(request.getClientId(), professional.getId());
 
+        String comment = profanityFilter.containsProfanity(request.getComment()) ? null : request.getComment();
+
         Rating rating = Rating.builder()
                 .professional(professional)
                 .professionalName(professional.getName())     // ← snapshot
@@ -138,7 +146,7 @@ public class RatingServiceImpl implements RatingService {
                 .workHistory(workHistory)
                 .client(client)
                 .score(request.getScore())
-                .comment(request.getComment())
+                .comment(comment)
                 .serviceDate(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -170,10 +178,11 @@ public class RatingServiceImpl implements RatingService {
     @Override
     @Transactional
     public Optional<Rating> updateRating(Long ratingId, Integer newScore, String newComment) {
+        String filteredComment = profanityFilter.containsProfanity(newComment) ? null : newComment;
         return ratingRepo.findById(ratingId).map(r -> {
             ensureEditable(r.getCreatedAt());
             if (newScore != null) r.setScore(newScore);
-            if (newComment != null) r.setComment(newComment);
+            if (newComment != null) r.setComment(filteredComment);
             r.setUpdatedAt(LocalDateTime.now());
             Rating updatedRating = ratingRepo.save(r);
             professionalService.updateProfessionalReputation(updatedRating.getProfessional().getId());
