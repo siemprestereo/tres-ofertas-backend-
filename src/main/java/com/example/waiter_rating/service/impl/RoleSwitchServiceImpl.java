@@ -1,7 +1,6 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.model.AppUser;
-import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.service.CvService;
@@ -51,16 +50,9 @@ public class RoleSwitchServiceImpl implements RoleSwitchService {
                 throw new IllegalArgumentException("El tipo de profesión es requerido para convertirse en profesional");
             }
 
-            ProfessionType profession;
-            try {
-                profession = ProfessionType.valueOf(professionType.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Tipo de profesión inválido: " + professionType);
-            }
-
             // Si es la primera vez como Professional, inicializar campos
             if (user.getProfessionType() == null) {
-                user.setProfessionType(profession);
+                user.setProfessionType(professionType);
                 user.setProfessionalTitle(professionalTitle);
                 user.setReputationScore(0.0);
                 user.setTotalRatings(0);
@@ -68,13 +60,13 @@ public class RoleSwitchServiceImpl implements RoleSwitchService {
                 user.setSearchable(true);
             } else {
                 // Si ya fue Professional antes, actualizar profession type si cambió
-                user.setProfessionType(profession);
+                user.setProfessionType(professionType);
                 if (professionalTitle != null && !professionalTitle.isEmpty()) {
                     user.setProfessionalTitle(professionalTitle);
                 }
             }
 
-            System.out.println("📝 Usuario configurado como Professional: " + profession);
+            System.out.println("📝 Usuario configurado como Professional: " + professionType);
 
             // Crear CV si no existe
             cvService.getOrCreateForProfessional(userId);

@@ -1,6 +1,5 @@
 package com.example.waiter_rating.dto.response;
 
-import com.example.waiter_rating.model.ProfessionType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -15,7 +14,7 @@ public class AppUserResponse {
     private String professionalTitle;
     private String userType; // "CLIENT" o "PROFESSIONAL"
     private String activeRole; // "CLIENT" o "PROFESSIONAL"
-    private ProfessionType professionType; // Solo presente si es PROFESSIONAL
+    private String professionType; // Solo presente si es PROFESSIONAL
     private String profilePicture;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

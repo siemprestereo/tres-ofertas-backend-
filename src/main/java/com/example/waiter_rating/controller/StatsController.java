@@ -105,7 +105,7 @@ public class StatsController {
         }
 
         // Obtener el tipo de profesión
-        String professionType = ratings.get(0).getProfessional().getProfessionType().toString();
+        String professionType = ratings.get(0).getProfessional().getProfessionType();
 
         // Calcular estadísticas generales
         Map<String, Object> stats = new HashMap<>();

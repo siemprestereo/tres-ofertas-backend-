@@ -3,7 +3,6 @@ package com.example.waiter_rating.service.impl;
 import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.AppUser;
-import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.RatingRepo;
@@ -46,7 +45,7 @@ public class ProfessionalServiceImpl implements ProfessionalService {
                 .emailVerified(false)
                 .activeRole(UserRole.PROFESSIONAL)
                 .professionType(request.getProfessionType())
-                .professionalTitle(request.getProfessionType().name())
+                .professionalTitle(request.getProfessionType())
                 .reputationScore(0.0)
                 .totalRatings(0)
                 .monthlyWorkplaceChanges(0)
@@ -84,10 +83,10 @@ public class ProfessionalServiceImpl implements ProfessionalService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProfessionalResponse> listByProfessionType(ProfessionType professionType) {
+    public List<ProfessionalResponse> listByProfessionType(String professionType) {
         return appUserRepo.findAll().stream()
                 .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
-                .filter(p -> p.getProfessionType() == professionType)
+                .filter(p -> professionType.equals(p.getProfessionType()))
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }

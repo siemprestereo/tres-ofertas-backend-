@@ -7,6 +7,7 @@ import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.BannedWord;
 import com.example.waiter_rating.model.ContactMessage;
 import com.example.waiter_rating.model.ContactMessageStatus;
+import com.example.waiter_rating.model.Profession;
 import com.example.waiter_rating.service.ProfanityFilterService;
 import com.example.waiter_rating.model.EmailLog;
 import com.example.waiter_rating.model.UserRole;
@@ -14,6 +15,7 @@ import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.BannedWordRepository;
 import com.example.waiter_rating.repository.ContactMessageRepo;
 import com.example.waiter_rating.repository.EmailLogRepository;
+import com.example.waiter_rating.repository.ProfessionRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.EmailService;
@@ -44,6 +46,7 @@ public class AdminController {
     private final ProfanityFilterService profanityFilter;
     private final com.example.waiter_rating.repository.RatingRepo ratingRepo;
     private final ContactMessageRepo contactMessageRepo;
+    private final ProfessionRepo professionRepo;
 
     private static final Set<String> ALLOWED_ALIASES = Set.of(
         "hola@calificalo.com.ar",
@@ -275,6 +278,49 @@ public class AdminController {
     @GetMapping("/messages/unread-count")
     public ResponseEntity<Map<String, Long>> unreadCount() {
         return ResponseEntity.ok(Map.of("count", contactMessageRepo.countByReadFalse()));
+    }
+
+    @PostMapping("/messages/{id}/accept-suggestion")
+    public ResponseEntity<?> acceptSuggestion(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        ContactMessage cm = contactMessageRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mensaje no encontrado"));
+
+        String displayName = body.get("displayName");
+        if (displayName == null || displayName.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El nombre es obligatorio"));
+        }
+
+        // Generate code
+        String code = displayName.trim().toUpperCase()
+                .replaceAll("[áàäâÁÀÄÂ]", "A").replaceAll("[éèëêÉÈËÊ]", "E")
+                .replaceAll("[íìïîÍÌÏÎ]", "I").replaceAll("[óòöôÓÒÖÔ]", "O")
+                .replaceAll("[úùüûÚÙÜÛ]", "U").replaceAll("[ñÑ]", "N")
+                .replaceAll("[^A-Z0-9]", "_").replaceAll("_+", "_")
+                .replaceAll("^_|_$", "");
+
+        String finalCode = code;
+        int suffix = 1;
+        while (professionRepo.existsByCode(finalCode)) {
+            finalCode = code + "_" + suffix++;
+        }
+
+        Profession profession = new Profession();
+        profession.setCode(finalCode);
+        profession.setDisplayName(displayName.trim());
+        profession.setActive(true);
+        professionRepo.save(profession);
+
+        // Send acceptance email
+        if (cm.getSenderEmail() != null && !cm.getSenderEmail().equals("desconocido")) {
+            emailService.sendSuggestionAcceptedEmail(cm.getSenderEmail(), cm.getSenderName(), displayName.trim());
+        }
+
+        // Mark message as resolved
+        cm.setRead(true);
+        cm.setStatus(ContactMessageStatus.RESOLVED);
+        contactMessageRepo.save(cm);
+
+        return ResponseEntity.ok(Map.of("message", "Profesión agregada correctamente", "code", finalCode));
     }
 
 }

@@ -3,7 +3,6 @@ package com.example.waiter_rating.service.impl;
 import com.example.waiter_rating.dto.request.ClientRequest;
 import com.example.waiter_rating.dto.response.ClientResponse;
 import com.example.waiter_rating.model.AppUser;
-import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.service.ClientService;
@@ -154,16 +153,9 @@ public class ClientServiceImpl implements ClientService {
             throw new IllegalStateException("Este usuario ya es un profesional");
         }
 
-        ProfessionType profession;
-        try {
-            profession = ProfessionType.valueOf(professionType.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Tipo de profesión inválido: " + professionType);
-        }
-
         // Actualizar el mismo usuario a Professional
         client.setActiveRole(UserRole.PROFESSIONAL);
-        client.setProfessionType(profession);
+        client.setProfessionType(professionType);
         client.setProfessionalTitle(professionalTitle);
         client.setReputationScore(0.0);
         client.setTotalRatings(0);

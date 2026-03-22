@@ -1,9 +1,7 @@
 package com.example.waiter_rating.dto.request;
 
-import com.example.waiter_rating.model.ProfessionType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
@@ -19,8 +17,8 @@ public class ProfessionalRequest {
     @NotBlank(message = "La contraseña es obligatoria")
     private String password;
 
-    @NotNull(message = "El tipo de profesión es obligatorio")
-    private ProfessionType professionType;
+    @NotBlank(message = "El tipo de profesión es obligatorio")
+    private String professionType;
 
     private String profilePicture;
 

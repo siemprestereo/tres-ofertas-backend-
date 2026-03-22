@@ -1,7 +1,6 @@
 package com.example.waiter_rating.dto.response;
 
 import com.example.waiter_rating.model.BusinessType;
-import com.example.waiter_rating.model.ProfessionType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -15,7 +14,7 @@ public class RatingResponse {
     // Professional info
     private Long professionalId;
     private String professionalName;
-    private ProfessionType professionType;
+    private String professionType;
 
     // Client info
     private Long clientId;

@@ -111,6 +111,20 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     @Async
+    public void sendSuggestionAcceptedEmail(String toEmail, String userName, String professionName) {
+        String html = "<div style='font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px'>"
+            + "<h2 style='color:#7c3aed'>¡Tu sugerencia fue aceptada! 🎉</h2>"
+            + "<p>Hola <strong>" + userName + "</strong>,</p>"
+            + "<p>Nos complace informarte que tu sugerencia de profesión <strong>\"" + professionName + "\"</strong> fue agregada a Calificalo.</p>"
+            + "<p>¡Gracias por ayudarnos a mejorar la plataforma!</p>"
+            + "<p style='color:#6b7280;font-size:0.9em'>El equipo de Calificalo</p>"
+            + "</div>";
+        send(defaultFrom, toEmail, "¡Tu sugerencia fue agregada a Calificalo!", html);
+        log.info("Suggestion accepted email sent to: {}", toEmail);
+    }
+
+    @Override
+    @Async
     public void sendBroadcastEmail(List<AppUser> recipients, String subject, String body, String replyTo) {
         String from = "Calificalo <" + replyTo + ">";
         int sent = 0;

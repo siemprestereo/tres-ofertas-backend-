@@ -104,7 +104,7 @@ public class AuthController {
                 Map.entry("phone", safe(user.getPhone())),
                 Map.entry("location", safe(user.getLocation())),
                 Map.entry("professionalTitle", safe(user.getProfessionalTitle())),
-                Map.entry("professionType", user.getProfessionType() != null ? user.getProfessionType().name() : ""),
+                Map.entry("professionType", user.getProfessionType() != null ? user.getProfessionType() : ""),
                 Map.entry("profilePicture", safe(user.getProfilePicture())),
                 Map.entry("reputationScore", reputationScore),
                 Map.entry("totalRatings", totalRatings),
@@ -194,18 +194,11 @@ public class AuthController {
                     .body(Map.of("error", "El email ya está registrado"));
         }
 
-        ProfessionType profession;
-        try {
-            profession = ProfessionType.valueOf(professionType);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Tipo de profesión inválido: " + professionType));
-        }
-
         AppUser professional = AppUser.builder()
                 .name(name).email(email)
                 .password(passwordEncoder.encode(password))
                 .activeRole(UserRole.PROFESSIONAL)
-                .location(location).professionType(profession)
+                .location(location).professionType(professionType)
                 .professionalTitle(professionalTitle)
                 .reputationScore(0.0).totalRatings(0).searchable(true)
                 .termsAccepted(true).termsAcceptedAt(LocalDateTime.now())
@@ -480,11 +473,7 @@ public class AuthController {
                 user.setProfessionalTitle(updates.get("professionalTitle"));
             }
             if (updates.containsKey("professionType")) {
-                try {
-                    user.setProfessionType(ProfessionType.valueOf(updates.get("professionType")));
-                } catch (IllegalArgumentException e) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Tipo de profesión inválido"));
-                }
+                user.setProfessionType(updates.get("professionType"));
             }
         }
 

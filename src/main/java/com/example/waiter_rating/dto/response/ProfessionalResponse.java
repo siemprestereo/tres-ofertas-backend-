@@ -1,6 +1,5 @@
 package com.example.waiter_rating.dto.response;
 
-import com.example.waiter_rating.model.ProfessionType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -13,7 +12,7 @@ public class ProfessionalResponse {
     private String profilePicture;
     private Boolean emailVerified;
     private String provider;
-    private ProfessionType professionType;
+    private String professionType;
     private LocalDateTime createdAt;
     private String location;
     private String professionalTitle;

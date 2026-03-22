@@ -3,7 +3,6 @@ package com.example.waiter_rating.controller;
 import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.AppUser;
-import com.example.waiter_rating.model.ProfessionType;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.ProfessionalZoneRepo;
@@ -239,7 +238,7 @@ public class ProfessionalController {
 
     @GetMapping
     public ResponseEntity<List<ProfessionalResponse>> listAll(
-            @RequestParam(required = false) ProfessionType professionType) {
+            @RequestParam(required = false) String professionType) {
         if (professionType != null) {
             return ResponseEntity.ok(professionalService.listByProfessionType(professionType));
         }
@@ -296,7 +295,7 @@ public class ProfessionalController {
         Map<String, Object> response = new HashMap<>();
         response.put("id", p.getId());
         response.put("name", p.getName() != null ? p.getName() : "");
-        response.put("professionType", p.getProfessionType() != null ? p.getProfessionType().toString() : "");
+        response.put("professionType", p.getProfessionType() != null ? p.getProfessionType() : "");
         response.put("location", p.getLocation() != null ? p.getLocation() : "");
         response.put("reputationScore", p.getReputationScore() != null ? p.getReputationScore() : 0.0);
         response.put("totalRatings", p.getTotalRatings() != null ? p.getTotalRatings() : 0);
@@ -304,25 +303,26 @@ public class ProfessionalController {
         return response;
     }
 
-    private String translateProfession(ProfessionType type) {
-        switch (type) {
-            case WAITER: return "Mozo";
-            case ELECTRICIAN: return "Electricista";
-            case PAINTER: return "Pintor";
-            case HAIRDRESSER: return "Peluquero";
-            case PLUMBER: return "Plomero";
-            case CARPENTER: return "Carpintero";
-            case PILATES: return "Instructora de pilates";
-            case MECHANIC: return "Mecánico";
-            case CHEF: return "Chef";
-            case BARISTA: return "Barista";
-            case BARTENDER: return "Bartender";
-            case CLEANER: return "Personal de limpieza";
-            case GARDENER: return "Jardinero";
-            case DRIVER: return "Conductor";
-            case SECURITY: return "Seguridad";
-            case RECEPTIONIST: return "Recepcionista";
-            default: return type.toString();
+    private String translateProfession(String code) {
+        if (code == null) return "";
+        switch (code) {
+            case "WAITER": return "Mozo";
+            case "ELECTRICIAN": return "Electricista";
+            case "PAINTER": return "Pintor";
+            case "HAIRDRESSER": return "Peluquero";
+            case "PLUMBER": return "Plomero";
+            case "CARPENTER": return "Carpintero";
+            case "PILATES": return "Instructora de pilates";
+            case "MECHANIC": return "Mecánico";
+            case "CHEF": return "Chef";
+            case "BARISTA": return "Barista";
+            case "BARTENDER": return "Bartender";
+            case "CLEANER": return "Personal de limpieza";
+            case "GARDENER": return "Jardinero";
+            case "DRIVER": return "Conductor";
+            case "SECURITY": return "Seguridad";
+            case "RECEPTIONIST": return "Recepcionista";
+            default: return code;
         }
     }
 }

@@ -74,9 +74,8 @@ public class AppUser {
     private Boolean suspended = false;
 
     // ========== CAMPOS DE PROFESSIONAL (nullable) ==========
-    @Enumerated(EnumType.STRING)
-    @Column(name = "profession_type")
-    private ProfessionType professionType;
+    @Column(name = "profession_type", length = 50)
+    private String professionType;
 
     @Column(length = 100)
     private String professionalTitle;
