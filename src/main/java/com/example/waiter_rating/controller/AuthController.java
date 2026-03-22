@@ -208,6 +208,7 @@ public class AuthController {
                 .location(location).professionType(profession)
                 .professionalTitle(professionalTitle)
                 .reputationScore(0.0).totalRatings(0).searchable(true)
+                .termsAccepted(true).termsAcceptedAt(LocalDateTime.now())
                 .build();
 
         professional = appUserRepo.save(professional);
@@ -254,6 +255,7 @@ public class AuthController {
                 .name(name).email(email)
                 .password(passwordEncoder.encode(password))
                 .activeRole(UserRole.CLIENT)
+                .termsAccepted(true).termsAcceptedAt(LocalDateTime.now())
                 .build();
 
         client = appUserRepo.save(client);
