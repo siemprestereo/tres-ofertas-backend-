@@ -20,6 +20,9 @@ public class Profession {
     @Column(nullable = false, length = 100)
     private String displayName;
 
+    @Column(length = 100)
+    private String category;
+
     @Column(nullable = false)
     private boolean active = true;
 }

@@ -304,9 +304,12 @@ public class AdminController {
             finalCode = code + "_" + suffix++;
         }
 
+        String category = body.get("category");
+
         Profession profession = new Profession();
         profession.setCode(finalCode);
         profession.setDisplayName(displayName.trim());
+        profession.setCategory(category != null && !category.isBlank() ? category.trim() : null);
         profession.setActive(true);
         professionRepo.save(profession);
 
