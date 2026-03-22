@@ -44,6 +44,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // OPTIONS preflight — siempre libre para que el CORS filter responda
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         // ========== PÚBLICOS (sin autenticación) ==========
                         .requestMatchers(
                                 "/",
