@@ -35,6 +35,7 @@ public class AppUserServiceImpl implements AppUserService {
     private final OAuthCodeTokenRepo oAuthCodeTokenRepo;
     private final FavoriteProfessionalRepo favoriteProfessionalRepo;
     private final ProfessionalZoneRepo professionalZoneRepo;
+    private final CertificationRepo certificationRepo;
 
     @Autowired
     public AppUserServiceImpl(AppUserRepo repo,
@@ -48,7 +49,8 @@ public class AppUserServiceImpl implements AppUserService {
                               QrTokenRepo qrTokenRepo,
                               OAuthCodeTokenRepo oAuthCodeTokenRepo,
                               FavoriteProfessionalRepo favoriteProfessionalRepo,
-                              ProfessionalZoneRepo professionalZoneRepo) {
+                              ProfessionalZoneRepo professionalZoneRepo,
+                              CertificationRepo certificationRepo) {
         this.repo = repo;
         this.jwtService = jwtService;
         this.verificationTokenRepository = verificationTokenRepository;
@@ -61,6 +63,7 @@ public class AppUserServiceImpl implements AppUserService {
         this.oAuthCodeTokenRepo = oAuthCodeTokenRepo;
         this.favoriteProfessionalRepo = favoriteProfessionalRepo;
         this.professionalZoneRepo = professionalZoneRepo;
+        this.certificationRepo = certificationRepo;
     }
 
     @Override
@@ -271,28 +274,37 @@ public class AppUserServiceImpl implements AppUserService {
         AppUser user = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
 
+        verificationTokenRepository.deleteByUser(user);
+        passwordResetTokenRepository.deleteByUser(user);
+        oAuthCodeTokenRepo.deleteAll(oAuthCodeTokenRepo.findByUserId(id));
+
         if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
-            // Preserve rating history: nullify professional reference before delete
-            // (ratings.professional_id has ON DELETE CASCADE, so we null it first to keep the rows)
+            certificationRepo.deleteAll(certificationRepo.findByProfessionalId(id));
+
+            if (user.getCv() != null) {
+                Cv cv = cvRepo.findById(user.getCv().getId()).orElse(null);
+                if (cv != null) {
+                    cv.getZones().clear();
+                    cvRepo.save(cv);
+                    cvRepo.delete(cv);
+                }
+            }
+
             List<Rating> ratingsRecibidos = ratingRepo.findByProfessionalId(id);
             ratingsRecibidos.forEach(r -> r.setProfessional(null));
             ratingRepo.saveAll(ratingsRecibidos);
 
-            // QR tokens have no ON DELETE CASCADE to app_users (old FK from V16) — must delete manually
             qrTokenRepo.deleteAll(qrTokenRepo.findByProfessionalId(id));
+            favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByProfessionalId(id));
 
         } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
-            // Preserve rating history: nullify client reference before delete
             List<Rating> ratingsEmitidas = ratingRepo.findByClientId(id);
             ratingsEmitidas.forEach(r -> r.setClient(null));
             ratingRepo.saveAll(ratingsEmitidas);
+
+            favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(id));
         }
 
-        // Everything else (CV, work history, education, favorites, verification tokens,
-        // password reset tokens, oauth tokens, rating reports) is handled automatically:
-        // - JPA CascadeType.ALL cascades from AppUser to CV, workHistory, education, favoriteProfessionals
-        // - DB ON DELETE CASCADE handles the rest (verification_tokens, password_reset_tokens,
-        //   oauth_code_tokens, rating_reports, favorite_professionals)
         repo.deleteById(id);
         log.info("Usuario {} eliminado por admin", id);
     }
