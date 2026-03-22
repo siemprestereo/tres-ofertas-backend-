@@ -50,5 +50,6 @@ public interface RatingService {
     List<AdminRatingResponse> listAllForAdmin();
     void deleteByAdmin(Long id);
     void clearCommentByAdmin(Long id);
+    List<AdminRatingResponse> getUserRatingsForAdmin(Long userId, String role);
 
 }

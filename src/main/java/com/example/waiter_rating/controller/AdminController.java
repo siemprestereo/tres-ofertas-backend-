@@ -11,6 +11,7 @@ import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.BannedWordRepository;
 import com.example.waiter_rating.repository.EmailLogRepository;
+import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.EmailService;
 import com.example.waiter_rating.service.RatingService;
@@ -38,6 +39,7 @@ public class AdminController {
     private final BannedWordRepository bannedWordRepo;
     private final EmailLogRepository emailLogRepo;
     private final ProfanityFilterService profanityFilter;
+    private final com.example.waiter_rating.repository.RatingRepo ratingRepo;
 
     private static final Set<String> ALLOWED_ALIASES = Set.of(
         "hola@calificalo.com.ar",
@@ -178,6 +180,69 @@ public class AdminController {
         bannedWordRepo.deleteById(id);
         profanityFilter.evictCache();
         return ResponseEntity.noContent().build();
+    }
+
+    // ========== STATS ==========
+
+    @GetMapping("/stats/activity")
+    public ResponseEntity<?> getActivity() {
+        var recentUsers = appUserRepo.findTop5ByOrderByCreatedAtDesc().stream()
+                .map(u -> Map.of(
+                        "id", u.getId(),
+                        "name", u.getName(),
+                        "email", u.getEmail(),
+                        "activeRole", u.getActiveRole().name(),
+                        "createdAt", u.getCreatedAt() != null ? u.getCreatedAt().toString() : ""
+                )).toList();
+
+        var recentRatings = ratingRepo.findTop5ByOrderByCreatedAtDesc().stream()
+                .map(r -> new AdminRatingResponse(
+                        r.getId(),
+                        r.getClient() != null ? r.getClient().getName() : "Cliente eliminado",
+                        r.getProfessional() != null ? r.getProfessional().getName() : r.getProfessionalName(),
+                        r.getScore(), r.getComment(), r.getCreatedAt()))
+                .toList();
+
+        return ResponseEntity.ok(Map.of("recentUsers", recentUsers, "recentRatings", recentRatings));
+    }
+
+    @GetMapping("/stats/trends")
+    public ResponseEntity<?> getTrends() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime since = now.minusWeeks(8);
+
+        List<com.example.waiter_rating.model.AppUser> users = appUserRepo.findByCreatedAtAfter(since);
+        List<com.example.waiter_rating.model.Rating> ratings = ratingRepo.findByCreatedAtAfter(since);
+
+        var points = new java.util.ArrayList<Map<String, Object>>();
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("d MMM", new java.util.Locale("es", "AR"));
+
+        for (int i = 7; i >= 0; i--) {
+            java.time.LocalDateTime weekStart = now.minusWeeks(i + 1).truncatedTo(java.time.temporal.ChronoUnit.DAYS);
+            java.time.LocalDateTime weekEnd   = now.minusWeeks(i).truncatedTo(java.time.temporal.ChronoUnit.DAYS);
+
+            long regCount = users.stream()
+                    .filter(u -> u.getCreatedAt() != null
+                            && !u.getCreatedAt().isBefore(weekStart)
+                            && u.getCreatedAt().isBefore(weekEnd))
+                    .count();
+            long ratingCount = ratings.stream()
+                    .filter(r -> r.getCreatedAt() != null
+                            && !r.getCreatedAt().isBefore(weekStart)
+                            && r.getCreatedAt().isBefore(weekEnd))
+                    .count();
+
+            points.add(Map.of("week", weekStart.format(fmt), "registrations", regCount, "ratings", ratingCount));
+        }
+
+        return ResponseEntity.ok(points);
+    }
+
+    @GetMapping("/users/{id}/ratings")
+    public ResponseEntity<List<AdminRatingResponse>> getUserRatings(@PathVariable Long id) {
+        AppUser user = appUserRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        return ResponseEntity.ok(ratingService.getUserRatingsForAdmin(id, user.getActiveRole().name()));
     }
 
 }

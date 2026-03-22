@@ -298,4 +298,19 @@ public class RatingServiceImpl implements RatingService {
         ratingRepo.save(rating);
         log.info("Comentario de calificación {} eliminado por admin", id);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminRatingResponse> getUserRatingsForAdmin(Long userId, String role) {
+        List<Rating> ratings = "PROFESSIONAL".equals(role)
+                ? ratingRepo.findByProfessionalIdOrderByCreatedAtDesc(userId)
+                : ratingRepo.findByClientIdOrderByCreatedAtDesc(userId);
+        return ratings.stream()
+                .map(r -> new AdminRatingResponse(
+                        r.getId(),
+                        r.getClient() != null ? r.getClient().getName() : "Cliente eliminado",
+                        r.getProfessional() != null ? r.getProfessional().getName() : r.getProfessionalName(),
+                        r.getScore(), r.getComment(), r.getCreatedAt()))
+                .toList();
+    }
 }

@@ -71,6 +71,11 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
 
 
     List<Rating> findByClientIdOrderByCreatedAtDesc(Long clientId, Pageable pageable);
+
+    List<Rating> findTop5ByOrderByCreatedAtDesc();
+
+    @Query("SELECT r FROM Rating r WHERE r.createdAt >= :since")
+    List<Rating> findByCreatedAtAfter(@Param("since") java.time.LocalDateTime since);
 }
 
 

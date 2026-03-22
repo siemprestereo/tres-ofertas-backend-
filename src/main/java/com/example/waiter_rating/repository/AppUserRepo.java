@@ -7,6 +7,7 @@ import com.example.waiter_rating.model.enums.AuthProvider;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,11 @@ public interface AppUserRepo extends JpaRepository<AppUser, Long> {
 
     @Query("SELECT u FROM AppUser u WHERE u.activeRole = 'PROFESSIONAL' AND u.searchable = true AND u.reputationScore > 0 ORDER BY u.reputationScore DESC")
     List<AppUser> findTopProfessionals(Pageable pageable);
+
+    List<AppUser> findTop5ByOrderByCreatedAtDesc();
+
+    @Query("SELECT u FROM AppUser u WHERE u.createdAt >= :since")
+    List<AppUser> findByCreatedAtAfter(@Param("since") java.time.LocalDateTime since);
 
 }
 
