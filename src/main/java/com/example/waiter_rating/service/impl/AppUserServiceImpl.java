@@ -36,6 +36,9 @@ public class AppUserServiceImpl implements AppUserService {
     private final FavoriteProfessionalRepo favoriteProfessionalRepo;
     private final ProfessionalZoneRepo professionalZoneRepo;
     private final CertificationRepo certificationRepo;
+    private final RatingReportRepo ratingReportRepo;
+    private final WorkHistoryRepo workHistoryRepo;
+    private final EducationRepo educationRepo;
 
     @Autowired
     public AppUserServiceImpl(AppUserRepo repo,
@@ -50,7 +53,10 @@ public class AppUserServiceImpl implements AppUserService {
                               OAuthCodeTokenRepo oAuthCodeTokenRepo,
                               FavoriteProfessionalRepo favoriteProfessionalRepo,
                               ProfessionalZoneRepo professionalZoneRepo,
-                              CertificationRepo certificationRepo) {
+                              CertificationRepo certificationRepo,
+                              RatingReportRepo ratingReportRepo,
+                              WorkHistoryRepo workHistoryRepo,
+                              EducationRepo educationRepo) {
         this.repo = repo;
         this.jwtService = jwtService;
         this.verificationTokenRepository = verificationTokenRepository;
@@ -64,6 +70,9 @@ public class AppUserServiceImpl implements AppUserService {
         this.favoriteProfessionalRepo = favoriteProfessionalRepo;
         this.professionalZoneRepo = professionalZoneRepo;
         this.certificationRepo = certificationRepo;
+        this.ratingReportRepo = ratingReportRepo;
+        this.workHistoryRepo = workHistoryRepo;
+        this.educationRepo = educationRepo;
     }
 
     @Override
@@ -274,36 +283,40 @@ public class AppUserServiceImpl implements AppUserService {
         AppUser user = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
 
+        // Tokens
         verificationTokenRepository.deleteByUser(user);
         passwordResetTokenRepository.deleteByUser(user);
         oAuthCodeTokenRepo.deleteAll(oAuthCodeTokenRepo.findByUserId(id));
 
-        if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
-            certificationRepo.deleteAll(certificationRepo.findByProfessionalId(id));
+        // Denuncias hechas por el usuario (aplica a cualquier rol)
+        ratingReportRepo.deleteAll(ratingReportRepo.findByReporterId(id));
 
-            if (user.getCv() != null) {
-                Cv cv = cvRepo.findById(user.getCv().getId()).orElse(null);
-                if (cv != null) {
-                    cv.getZones().clear();
-                    cvRepo.save(cv);
-                    cvRepo.delete(cv);
-                }
+        // Ratings emitidas como cliente
+        List<Rating> ratingsEmitidas = ratingRepo.findByClientId(id);
+        ratingsEmitidas.forEach(r -> r.setClient(null));
+        ratingRepo.saveAll(ratingsEmitidas);
+
+        // Datos de profesional
+        certificationRepo.deleteAll(certificationRepo.findByProfessionalId(id));
+        educationRepo.deleteByProfessionalId(id);
+        workHistoryRepo.deleteAll(workHistoryRepo.findByProfessionalId(id));
+
+        if (user.getCv() != null) {
+            Cv cv = cvRepo.findById(user.getCv().getId()).orElse(null);
+            if (cv != null) {
+                cv.getZones().clear();
+                cvRepo.save(cv);
+                cvRepo.delete(cv);
             }
-
-            List<Rating> ratingsRecibidos = ratingRepo.findByProfessionalId(id);
-            ratingsRecibidos.forEach(r -> r.setProfessional(null));
-            ratingRepo.saveAll(ratingsRecibidos);
-
-            qrTokenRepo.deleteAll(qrTokenRepo.findByProfessionalId(id));
-            favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByProfessionalId(id));
-
-        } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
-            List<Rating> ratingsEmitidas = ratingRepo.findByClientId(id);
-            ratingsEmitidas.forEach(r -> r.setClient(null));
-            ratingRepo.saveAll(ratingsEmitidas);
-
-            favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(id));
         }
+
+        List<Rating> ratingsRecibidos = ratingRepo.findByProfessionalId(id);
+        ratingsRecibidos.forEach(r -> r.setProfessional(null));
+        ratingRepo.saveAll(ratingsRecibidos);
+
+        qrTokenRepo.deleteAll(qrTokenRepo.findByProfessionalId(id));
+        favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByProfessionalId(id));
+        favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(id));
 
         repo.deleteById(id);
         log.info("Usuario {} eliminado por admin", id);
