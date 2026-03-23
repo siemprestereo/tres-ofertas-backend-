@@ -66,4 +66,22 @@ public class ProfessionController {
             return ResponseEntity.ok(professionRepo.save(p));
         }).orElse(ResponseEntity.notFound().build());
     }
+
+    @PutMapping("/api/admin/professions/{id}")
+    public ResponseEntity<?> updateProfession(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return professionRepo.findById(id).map(p -> {
+            String displayName = body.get("displayName");
+            if (displayName != null && !displayName.isBlank()) p.setDisplayName(displayName.trim());
+            String category = body.get("category");
+            p.setCategory(category != null && !category.isBlank() ? category.trim() : null);
+            return ResponseEntity.ok(professionRepo.save(p));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/api/admin/professions/{id}")
+    public ResponseEntity<Void> deleteProfession(@PathVariable Long id) {
+        if (!professionRepo.existsById(id)) return ResponseEntity.notFound().build();
+        professionRepo.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
 }
