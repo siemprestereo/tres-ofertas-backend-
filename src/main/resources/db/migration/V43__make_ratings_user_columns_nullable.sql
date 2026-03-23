@@ -1,0 +1,2 @@
+ALTER TABLE ratings MODIFY COLUMN professional_id BIGINT NULL;
+ALTER TABLE ratings MODIFY COLUMN client_id BIGINT NULL;
