@@ -404,6 +404,24 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Email verificado correctamente"));
     }
 
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null)
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "No autenticado"));
+
+        Optional<AppUser> userOpt = appUserRepo.findById(userId);
+        if (userOpt.isEmpty())
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Usuario no encontrado"));
+
+        AppUser user = userOpt.get();
+        if (Boolean.TRUE.equals(user.getEmailVerified()))
+            return ResponseEntity.badRequest().body(Map.of("error", "El email ya está verificado"));
+
+        appUserService.createVerificationToken(user);
+        return ResponseEntity.ok(Map.of("message", "Mail de verificación reenviado"));
+    }
+
     // ========== PERFIL ACTUAL ==========
 
     @GetMapping("/me")
