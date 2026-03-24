@@ -89,7 +89,8 @@ public class AuthController {
                 "phone", safe(user.getPhone()),
                 "location", safe(user.getLocation()),
                 "profilePicture", safe(user.getProfilePicture()),
-                "termsAccepted", user.getTermsAccepted() != null && user.getTermsAccepted()
+                "termsAccepted", user.getTermsAccepted() != null && user.getTermsAccepted(),
+                "emailVerified", user.getEmailVerified() != null && user.getEmailVerified()
         );
     }
 
@@ -108,7 +109,8 @@ public class AuthController {
                 Map.entry("profilePicture", safe(user.getProfilePicture())),
                 Map.entry("reputationScore", reputationScore),
                 Map.entry("totalRatings", totalRatings),
-                Map.entry("termsAccepted", user.getTermsAccepted() != null && user.getTermsAccepted())
+                Map.entry("termsAccepted", user.getTermsAccepted() != null && user.getTermsAccepted()),
+                Map.entry("emailVerified", user.getEmailVerified() != null && user.getEmailVerified())
         );
     }
 
