@@ -87,7 +87,7 @@ public class EmailServiceImpl implements EmailService {
         String html = "PROFESSIONAL".equals(role)
                 ? buildVerificationProfessionalTemplate(userName, verificationUrl)
                 : buildVerificationClientTemplate(userName, verificationUrl);
-        send(fromHola, toEmail, "¡Bienvenido a Calificalo! Verificá tu cuenta ✅", html);
+        send(fromHola, toEmail, "¡Bienvenido a Calificalo! Verificá tu cuenta", html);
         log.info("Verification email sent to: {}", toEmail);
     }
 
