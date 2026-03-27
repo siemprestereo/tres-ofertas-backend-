@@ -75,6 +75,22 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public void deleteOne(Long notificationId, Long userId) {
+        notificationRepo.findById(notificationId).ifPresent(n -> {
+            if (n.getUser().getId().equals(userId)) {
+                notificationRepo.delete(n);
+            }
+        });
+    }
+
+    @Override
+    @Transactional
+    public void deleteAll(Long userId) {
+        notificationRepo.deleteAllByUserId(userId);
+    }
+
+    @Override
+    @Transactional
     public void sendToRole(UserRole role, String title, String message) {
         appUserRepo.findAll().stream()
                 .filter(u -> u.getActiveRole() == role)

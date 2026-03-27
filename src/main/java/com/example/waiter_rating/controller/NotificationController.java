@@ -46,6 +46,22 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteOne(@PathVariable Long id, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) return ResponseEntity.status(401).build();
+        notificationService.deleteOne(id, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping
+    public ResponseEntity<?> deleteAll(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) return ResponseEntity.status(401).build();
+        notificationService.deleteAll(userId);
+        return ResponseEntity.ok().build();
+    }
+
     // ===== ADMIN =====
 
     @PostMapping("/admin/send")

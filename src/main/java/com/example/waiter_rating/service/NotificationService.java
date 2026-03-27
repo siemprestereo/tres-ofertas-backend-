@@ -14,4 +14,6 @@ public interface NotificationService {
     void sendToUser(Long userId, String title, String message);
     void sendToAll(String title, String message);
     void sendToRole(UserRole role, String title, String message);
+    void deleteOne(Long notificationId, Long userId);
+    void deleteAll(Long userId);
 }
