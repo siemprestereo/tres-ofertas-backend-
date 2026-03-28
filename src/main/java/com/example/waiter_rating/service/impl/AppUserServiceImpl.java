@@ -320,6 +320,7 @@ public class AppUserServiceImpl implements AppUserService {
         qrTokenRepo.deleteAll(qrTokenRepo.findByProfessionalId(id));
         favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByProfessionalId(id));
         favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(id));
+        notificationRepo.deleteAllByUserId(id);
 
         repo.deleteById(id);
         log.info("Usuario {} eliminado por admin", id);
