@@ -1,9 +1,13 @@
 package com.example.waiter_rating.service.impl;
 
+import com.example.waiter_rating.dto.response.CertificationResponse;
+import com.example.waiter_rating.dto.response.EducationResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
+import com.example.waiter_rating.service.CertificationService;
+import com.example.waiter_rating.service.EducationService;
 import com.example.waiter_rating.service.PdfService;
 import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.io.image.ImageDataFactory;
@@ -30,6 +34,8 @@ public class PdfServiceImpl implements PdfService {
 
     private final AppUserRepo appUserRepo;
     private final WorkHistoryRepo workHistoryRepo;
+    private final EducationService educationService;
+    private final CertificationService certificationService;
 
     // Paleta de colores Modernos
     private static final DeviceRgb PRIMARY_COLOR = new DeviceRgb(79, 70, 229);   // Indigo moderno
@@ -38,9 +44,12 @@ public class PdfServiceImpl implements PdfService {
     private static final DeviceRgb TEXT_DARK = new DeviceRgb(31, 41, 55);       // Casi negro
     private static final DeviceRgb STAR_YELLOW = new DeviceRgb(251, 191, 36);    // Dorado ratings
 
-    public PdfServiceImpl(AppUserRepo appUserRepo, WorkHistoryRepo workHistoryRepo) {
+    public PdfServiceImpl(AppUserRepo appUserRepo, WorkHistoryRepo workHistoryRepo,
+                          EducationService educationService, CertificationService certificationService) {
         this.appUserRepo = appUserRepo;
         this.workHistoryRepo = workHistoryRepo;
+        this.educationService = educationService;
+        this.certificationService = certificationService;
     }
 
     @Override
@@ -49,6 +58,8 @@ public class PdfServiceImpl implements PdfService {
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado"));
 
         List<WorkHistory> workHistory = workHistoryRepo.findByProfessionalId(professionalId);
+        List<EducationResponse> education = educationService.getEducationByProfessional(professionalId);
+        List<CertificationResponse> certifications = certificationService.getCertificationsByProfessional(professionalId);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PdfWriter writer = new PdfWriter(baos);
@@ -128,6 +139,16 @@ public class PdfServiceImpl implements PdfService {
             addTimelineExperience(rightColumn, workHistory, boldFont, regularFont);
         }
 
+        if (!education.isEmpty()) {
+            addContentSectionTitle(rightColumn, "EDUCACIÓN Y CAPACITACIONES", boldFont);
+            addEducationSection(rightColumn, education, boldFont, regularFont);
+        }
+
+        if (!certifications.isEmpty()) {
+            addContentSectionTitle(rightColumn, "CERTIFICACIONES", boldFont);
+            addCertificationsSection(rightColumn, certifications, boldFont, regularFont);
+        }
+
         mainTable.addCell(rightColumn);
         document.add(mainTable);
 
@@ -190,6 +211,51 @@ public class PdfServiceImpl implements PdfService {
             if (work.getDescription() != null && !work.getDescription().isBlank()) {
                 cell.add(new Paragraph(work.getDescription()).setFont(regularFont).setFontSize(9).setMarginLeft(10).setMarginBottom(15));
             }
+        }
+    }
+
+    private void addEducationSection(Cell cell, List<EducationResponse> education, PdfFont boldFont, PdfFont regularFont) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM yyyy");
+        for (EducationResponse edu : education) {
+            Paragraph p = new Paragraph().setMarginBottom(4);
+            if (edu.getDegree() != null && !edu.getDegree().isBlank()) {
+                p.add(new Text(edu.getDegree() + "\n").setFont(boldFont).setFontSize(11).setFontColor(TEXT_DARK));
+            }
+            if (edu.getInstitution() != null && !edu.getInstitution().isBlank()) {
+                p.add(new Text(edu.getInstitution()).setFont(boldFont).setFontSize(10).setFontColor(PRIMARY_COLOR));
+            }
+            if (edu.getStartDate() != null) {
+                String dateRange = "  •  " + edu.getStartDate().format(fmt) + " - " +
+                        (Boolean.TRUE.equals(edu.getCurrentlyStudying()) ? "Actualidad"
+                                : (edu.getEndDate() != null ? edu.getEndDate().format(fmt) : ""));
+                p.add(new Text(dateRange).setFont(regularFont).setFontSize(9).setFontColor(SECONDARY_COLOR));
+            }
+            cell.add(p);
+            if (edu.getDescription() != null && !edu.getDescription().isBlank()) {
+                cell.add(new Paragraph(edu.getDescription()).setFont(regularFont).setFontSize(9).setMarginLeft(10).setMarginBottom(12));
+            } else {
+                cell.add(new Paragraph("").setMarginBottom(12));
+            }
+        }
+    }
+
+    private void addCertificationsSection(Cell cell, List<CertificationResponse> certifications, PdfFont boldFont, PdfFont regularFont) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM yyyy");
+        for (CertificationResponse cert : certifications) {
+            Paragraph p = new Paragraph().setMarginBottom(4);
+            p.add(new Text(cert.getName() + "\n").setFont(boldFont).setFontSize(11).setFontColor(TEXT_DARK));
+            if (cert.getIssuer() != null && !cert.getIssuer().isBlank()) {
+                p.add(new Text(cert.getIssuer()).setFont(boldFont).setFontSize(10).setFontColor(PRIMARY_COLOR));
+            }
+            if (cert.getDateObtained() != null) {
+                String dateInfo = "  •  " + cert.getDateObtained().format(fmt);
+                if (cert.getExpiryDate() != null) {
+                    dateInfo += " — vence " + cert.getExpiryDate().format(fmt);
+                }
+                p.add(new Text(dateInfo).setFont(regularFont).setFontSize(9).setFontColor(SECONDARY_COLOR));
+            }
+            cell.add(p);
+            cell.add(new Paragraph("").setMarginBottom(12));
         }
     }
 }
