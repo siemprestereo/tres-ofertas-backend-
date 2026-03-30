@@ -389,18 +389,14 @@ public class CvController {
 
             System.out.println("📝 Actualizando CV " + cvId + " del usuario " + userId);
 
-            // 0. Actualizar descripción (SOBRE MÍ)
-            if (updates.containsKey("description")) {
-                String description = (String) updates.get("description");
-                cvService.updateDescription(userId, description);
-                System.out.println("✏️ Descripción actualizada: " + description);
-            }
-
-            // 0b. Actualizar habilidades
-            if (updates.containsKey("skills")) {
-                String skills = (String) updates.get("skills");
-                cvService.updateSkills(userId, skills);
-                System.out.println("🏷️ Habilidades actualizadas: " + skills);
+            // 0. Actualizar descripción y habilidades en una sola transacción
+            if (updates.containsKey("description") || updates.containsKey("skills")) {
+                String description = updates.containsKey("description") ? (String) updates.get("description") : null;
+                String skills = updates.containsKey("skills") ? (String) updates.get("skills") : null;
+                Cv updated = cvService.updateDescriptionAndSkills(userId,
+                        description != null ? description : "",
+                        skills != null ? skills : "");
+                System.out.println("✏️ Descripción: " + updated.getDescription() + " | Habilidades: " + updated.getSkills());
             }
 
             // 1. Actualizar work experiences (mantenido por compatibilidad)

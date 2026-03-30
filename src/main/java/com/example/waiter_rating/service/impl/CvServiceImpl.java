@@ -87,6 +87,16 @@ public class CvServiceImpl implements CvService {
 
     @Override
     @Transactional
+    public Cv updateDescriptionAndSkills(Long professionalId, String description, String skills) {
+        Cv cv = cvRepo.findByProfessionalId(professionalId)
+                .orElseThrow(() -> new IllegalArgumentException("CV no encontrado para el professional: " + professionalId));
+        cv.setDescription(description);
+        cv.setSkills(skills);
+        return cvRepo.save(cv);
+    }
+
+    @Override
+    @Transactional
     public Cv updateReputationScore(Long professionalId) {
         Cv cv = cvRepo.findByProfessionalId(professionalId)
                 .orElseThrow(() -> new IllegalArgumentException("CV no encontrado para el professional: " + professionalId));

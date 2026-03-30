@@ -21,6 +21,9 @@ public interface CvService {
     /** Actualiza las habilidades del CV */
     Cv updateSkills(Long professionalId, String skills);
 
+    /** Actualiza descripción y habilidades del CV en una sola transacción */
+    Cv updateDescriptionAndSkills(Long professionalId, String description, String skills);
+
     /** Recalcula y actualiza el reputation score */
     Cv updateReputationScore(Long professionalId);
 
