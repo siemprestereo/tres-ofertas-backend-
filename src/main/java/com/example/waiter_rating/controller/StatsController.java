@@ -48,49 +48,18 @@ public class StatsController {
 
     @GetMapping("/professional/{professionalId}/by-business")
     public ResponseEntity<?> getRatingsByBusiness(@PathVariable Long professionalId) {
-        var ratings = ratingRepository.findByProfessionalId(professionalId);
+        List<Object[]> rows = ratingRepository.findRatingStatsByProfessionalGroupedByWorkHistory(professionalId);
 
-        // ✅ MODIFICADO: Agrupar por WorkHistory (que incluye business + position)
-        // Esto permite tener el workHistoryId en el resultado
-        Map<Long, List<Integer>> byWorkHistory = ratings.stream()
-                .filter(r -> r.getWorkHistory() != null) // Filtrar solo ratings con workHistory
-                .collect(Collectors.groupingBy(
-                        r -> r.getWorkHistory().getId(),
-                        Collectors.mapping(r -> r.getScore(), Collectors.toList())
-                ));
-
-        // Calcular promedio por workHistory
-        List<Map<String, Object>> result = byWorkHistory.entrySet().stream()
-                .map(entry -> {
-                    // Obtener el primer rating para extraer la información del workHistory
-                    var sampleRating = ratings.stream()
-                            .filter(r -> r.getWorkHistory() != null && r.getWorkHistory().getId().equals(entry.getKey()))
-                            .findFirst()
-                            .orElse(null);
-
-                    if (sampleRating == null) return null;
-
-                    Map<String, Object> businessData = new HashMap<>();
-                    // ✅ AGREGADO: workHistoryId
-                    businessData.put("workHistoryId", entry.getKey());
-                    // Nombre del negocio
-                    businessData.put("business", sampleRating.getBusiness().getName());
-                    // Posición/puesto (opcional)
-                    businessData.put("position", sampleRating.getWorkHistory().getPosition());
-                    // Promedio de calificaciones
-                    businessData.put("average", entry.getValue().stream()
-                            .mapToInt(Integer::intValue)
-                            .average()
-                            .orElse(0.0));
-                    // Cantidad de calificaciones
-                    businessData.put("count", entry.getValue().size());
-                    return businessData;
+        List<Map<String, Object>> result = rows.stream()
+                .map(row -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("workHistoryId", ((Number) row[0]).longValue());
+                    item.put("business", row[1] != null ? row[1].toString() : "");
+                    item.put("position", row[2] != null ? row[2].toString() : "");
+                    item.put("count", ((Number) row[3]).intValue());
+                    item.put("average", row[4] != null ? ((Number) row[4]).doubleValue() : 0.0);
+                    return item;
                 })
-                .filter(Objects::nonNull) // Filtrar nulls
-                .sorted((a, b) -> Double.compare(
-                        (Double) b.get("average"),
-                        (Double) a.get("average")
-                ))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(result);

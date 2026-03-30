@@ -54,6 +54,9 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
 
     long countByWorkHistoryId(Long workHistoryId);
 
+    @Query("SELECT r.workHistory.id as workHistoryId, r.workHistory.businessName as businessName, r.workHistory.position as position, COUNT(r) as count, AVG(r.score) as average FROM Rating r WHERE r.professional.id = :professionalId AND r.workHistory IS NOT NULL GROUP BY r.workHistory.id, r.workHistory.businessName, r.workHistory.position ORDER BY AVG(r.score) DESC")
+    List<Object[]> findRatingStatsByProfessionalGroupedByWorkHistory(@Param("professionalId") Long professionalId);
+
     List<Rating> findByProfessionalIdAndCreatedAtBetween(
             Long professionalId,
             LocalDateTime start,
