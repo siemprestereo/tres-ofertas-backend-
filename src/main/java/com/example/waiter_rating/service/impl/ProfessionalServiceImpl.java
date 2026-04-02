@@ -207,6 +207,7 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         response.setId(professional.getId());
         response.setName(professional.getName());
         response.setEmail(professional.getEmail());
+        response.setPhone(professional.getPhone());
         response.setProfilePicture(professional.getProfilePicture());
         response.setEmailVerified(professional.getEmailVerified());
         response.setProvider(professional.getProvider());

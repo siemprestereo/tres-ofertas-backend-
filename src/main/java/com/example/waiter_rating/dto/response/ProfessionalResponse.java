@@ -9,6 +9,7 @@ public class ProfessionalResponse {
     private Long id;
     private String name;
     private String email;
+    private String phone;
     private String profilePicture;
     private Boolean emailVerified;
     private String provider;
