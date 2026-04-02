@@ -551,7 +551,9 @@ public class PdfServiceImpl implements PdfService {
                 cell.add(new Paragraph(work.getDescription()).setFont(regularFont).setFontSize(9).setMarginLeft(10).setMarginBottom(4));
             }
             if (work.getReferenceContact() != null && !work.getReferenceContact().isBlank()) {
-                cell.add(new Paragraph("Referencia: " + work.getReferenceContact())
+                String ref = work.getReferenceContact() +
+                        (work.getReferencePhone() != null && !work.getReferencePhone().isBlank() ? " — " + work.getReferencePhone() : "");
+                cell.add(new Paragraph("Referencia: " + ref)
                         .setFont(regularFont).setFontSize(8).setFontColor(SECONDARY_COLOR).setMarginLeft(10).setMarginBottom(15));
             }
         }

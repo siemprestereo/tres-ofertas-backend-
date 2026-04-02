@@ -49,6 +49,9 @@ public class WorkHistory {
     @Column(length = 200)
     private String referenceContact; // opcional
 
+    @Column(name = "reference_phone", length = 100)
+    private String referencePhone; // opcional
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

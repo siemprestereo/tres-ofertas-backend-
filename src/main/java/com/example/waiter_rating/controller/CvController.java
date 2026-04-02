@@ -876,6 +876,7 @@ public class CvController {
         item.setIsActive(wh.getIsActive());
         item.setIsFreelance(wh.getIsFreelance() != null ? wh.getIsFreelance() : false);
         item.setReferenceContact(wh.getReferenceContact());
+        item.setReferencePhone(wh.getReferencePhone());
 
         long ratingCount = ratingRepo.countByWorkHistoryId(wh.getId());
         item.setTotalRatings((int) ratingCount);

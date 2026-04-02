@@ -22,6 +22,7 @@ public class WorkHistoryRequest {
     private LocalDate endDate; // null = trabaja actualmente
 
     private String referenceContact;
+    private String referencePhone;
 
     private String description;
 

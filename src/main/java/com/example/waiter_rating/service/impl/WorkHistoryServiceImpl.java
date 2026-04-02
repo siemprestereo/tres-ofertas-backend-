@@ -74,6 +74,7 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                 .isActive(isActiveJob)
                 .isFreelance(request.getIsFreelance() != null ? request.getIsFreelance() : false)
                 .referenceContact(request.getReferenceContact())
+                .referencePhone(request.getReferencePhone())
                 .description(request.getDescription())
                 .build();
 
@@ -137,6 +138,9 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
         }
         if (request.getReferenceContact() != null) {
             workHistory.setReferenceContact(request.getReferenceContact());
+        }
+        if (request.getReferencePhone() != null) {
+            workHistory.setReferencePhone(request.getReferencePhone());
         }
         if (request.getStartDate() != null) {
             workHistory.setStartDate(request.getStartDate());

@@ -15,5 +15,6 @@ public class CvExperienceItem {
     private Boolean isActive;
     private Boolean isFreelance; // ← AGREGAR ESTA LÍNEA
     private String referenceContact;
+    private String referencePhone;
     private Integer totalRatings;
 }
