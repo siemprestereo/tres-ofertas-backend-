@@ -1,6 +1,7 @@
 package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.dto.request.CvDescriptionRequest;
+import com.example.waiter_rating.dto.request.PdfGenerationRequest;
 import com.example.waiter_rating.dto.request.WorkHistoryRequest;
 import com.example.waiter_rating.dto.response.CvExperienceItem;
 import com.example.waiter_rating.dto.response.CvPublicResponse;
@@ -626,6 +627,71 @@ public class CvController {
                 .map(this::toItem)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(list);
+    }
+
+    /**
+     * Generar CV en PDF con selección de contenido y layout (PÚBLICO)
+     */
+    @PostMapping("/{professionalId}/generate-pdf")
+    public ResponseEntity<byte[]> generateCvPdf(
+            @PathVariable Long professionalId,
+            @RequestBody PdfGenerationRequest request) {
+        try {
+            byte[] pdfBytes = pdfService.generateCvPdf(professionalId, request);
+
+            String professionalName = "Profesional";
+            try {
+                Cv cv = cvService.getPublicCv(professionalId);
+                professionalName = cv.getProfessional().getName()
+                        .replaceAll("[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\\s]", "")
+                        .trim()
+                        .replaceAll("\\s+", "_");
+            } catch (Exception ignored) {}
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    ContentDisposition.builder("attachment")
+                            .filename("CV_" + professionalName + ".pdf")
+                            .build()
+            );
+
+            return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Preview de CV en PDF (inline, para mostrar en el browser) — requiere autenticación
+     */
+    @GetMapping("/me/preview-pdf")
+    public ResponseEntity<byte[]> previewCvPdf(
+            @RequestParam(defaultValue = "clasico") String layout,
+            HttpServletRequest request) {
+        try {
+            Long userId = (Long) request.getAttribute("userId");
+            String userType = (String) request.getAttribute("userType");
+
+            if (userId == null || !"PROFESSIONAL".equals(userType)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            PdfGenerationRequest pdfRequest = new PdfGenerationRequest();
+            pdfRequest.setLayout(layout);
+
+            byte[] pdfBytes = pdfService.generateCvPdf(userId, pdfRequest);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(ContentDisposition.builder("inline").build());
+
+            return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     /**
