@@ -257,7 +257,11 @@ public class PdfServiceImpl implements PdfService {
                 document.add(p);
                 if (work.getDescription() != null && !work.getDescription().isBlank()) {
                     document.add(new Paragraph(work.getDescription())
-                            .setFont(regularFont).setFontSize(9).setMarginLeft(12).setMarginBottom(14));
+                            .setFont(regularFont).setFontSize(9).setMarginLeft(12).setMarginBottom(4));
+                }
+                if (work.getReferenceContact() != null && !work.getReferenceContact().isBlank()) {
+                    document.add(new Paragraph("Referencia: " + work.getReferenceContact())
+                            .setFont(regularFont).setFontSize(8).setFontColor(SECONDARY_COLOR).setMarginLeft(12).setMarginBottom(14));
                 }
             }
         }
@@ -414,7 +418,10 @@ public class PdfServiceImpl implements PdfService {
                 p.add(new Text(dr).setFont(regularFont).setFontSize(9).setFontColor(SECONDARY_COLOR));
                 document.add(p);
                 if (work.getDescription() != null && !work.getDescription().isBlank())
-                    document.add(new Paragraph(work.getDescription()).setFont(regularFont).setFontSize(9).setMarginLeft(12).setMarginBottom(14));
+                    document.add(new Paragraph(work.getDescription()).setFont(regularFont).setFontSize(9).setMarginLeft(12).setMarginBottom(4));
+                if (work.getReferenceContact() != null && !work.getReferenceContact().isBlank())
+                    document.add(new Paragraph("Referencia: " + work.getReferenceContact())
+                            .setFont(regularFont).setFontSize(8).setFontColor(SECONDARY_COLOR).setMarginLeft(12).setMarginBottom(14));
             }
         }
 
@@ -541,7 +548,11 @@ public class PdfServiceImpl implements PdfService {
             p.add(new Text(dateRange).setFont(regularFont).setFontSize(9).setFontColor(SECONDARY_COLOR));
             cell.add(p);
             if (work.getDescription() != null && !work.getDescription().isBlank()) {
-                cell.add(new Paragraph(work.getDescription()).setFont(regularFont).setFontSize(9).setMarginLeft(10).setMarginBottom(15));
+                cell.add(new Paragraph(work.getDescription()).setFont(regularFont).setFontSize(9).setMarginLeft(10).setMarginBottom(4));
+            }
+            if (work.getReferenceContact() != null && !work.getReferenceContact().isBlank()) {
+                cell.add(new Paragraph("Referencia: " + work.getReferenceContact())
+                        .setFont(regularFont).setFontSize(8).setFontColor(SECONDARY_COLOR).setMarginLeft(10).setMarginBottom(15));
             }
         }
     }
