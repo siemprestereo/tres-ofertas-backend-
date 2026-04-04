@@ -172,6 +172,12 @@ public class AdminController {
         return ResponseEntity.ok(emailLogRepo.findTop100ByOrderBySentAtDesc());
     }
 
+    @DeleteMapping("/email/log/{id}")
+    public ResponseEntity<Void> deleteEmailLog(@PathVariable Long id) {
+        emailLogRepo.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // ========== BANNED WORDS ==========
 
     @GetMapping("/banned-words")
@@ -283,6 +289,12 @@ public class AdminController {
                 .orElseThrow(() -> new RuntimeException("Mensaje no encontrado"));
         cm.setStatus(ContactMessageStatus.RESOLVED);
         return ResponseEntity.ok(contactMessageRepo.save(cm));
+    }
+
+    @DeleteMapping("/messages/{id}")
+    public ResponseEntity<Void> deleteMessage(@PathVariable Long id) {
+        contactMessageRepo.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/messages/unread-count")
