@@ -34,6 +34,7 @@ public class RatingServiceImpl implements RatingService {
     private final WorkHistoryRepo workHistoryRepo;
     private final ProfessionalService professionalService;
     private final ProfanityFilterService profanityFilter;
+    private final RatingReportRepo ratingReportRepo;
 
     public RatingServiceImpl(RatingRepo ratingRepo,
                              AppUserRepo appUserRepo,
@@ -41,7 +42,8 @@ public class RatingServiceImpl implements RatingService {
                              QrTokenRepo qrTokenRepo,
                              WorkHistoryRepo workHistoryRepo,
                              ProfessionalService professionalService,
-                             ProfanityFilterService profanityFilter) {
+                             ProfanityFilterService profanityFilter,
+                             RatingReportRepo ratingReportRepo) {
         this.ratingRepo = ratingRepo;
         this.appUserRepo = appUserRepo;
         this.businessRepo = businessRepo;
@@ -49,6 +51,7 @@ public class RatingServiceImpl implements RatingService {
         this.workHistoryRepo = workHistoryRepo;
         this.professionalService = professionalService;
         this.profanityFilter = profanityFilter;
+        this.ratingReportRepo = ratingReportRepo;
     }
 
     @Override
@@ -278,6 +281,7 @@ public class RatingServiceImpl implements RatingService {
     public void deleteByAdmin(Long id) {
         Rating rating = ratingRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Calificación no encontrada con id: " + id));
+        ratingReportRepo.deleteByRatingId(id);
         if (rating.getProfessional() != null) {
             Long professionalId = rating.getProfessional().getId();
             ratingRepo.delete(rating);
