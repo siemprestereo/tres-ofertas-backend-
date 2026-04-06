@@ -9,7 +9,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "app_users")
@@ -75,7 +77,13 @@ public class AppUser {
 
     // ========== CAMPOS DE PROFESSIONAL (nullable) ==========
     @Column(name = "profession_type", length = 50)
-    private String professionType;
+    private String professionType; // legacy — se mantiene por compatibilidad
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "professional_profession_types", joinColumns = @JoinColumn(name = "professional_id"))
+    @Column(name = "profession_type")
+    @Builder.Default
+    private Set<String> professionTypes = new HashSet<>();
 
     @Column(length = 100)
     private String professionalTitle;

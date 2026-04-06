@@ -110,6 +110,7 @@ public class AuthController {
                 Map.entry("location", safe(user.getLocation())),
                 Map.entry("professionalTitle", safe(user.getProfessionalTitle())),
                 Map.entry("professionType", user.getProfessionType() != null ? user.getProfessionType() : ""),
+                Map.entry("professionTypes", user.getProfessionTypes() != null ? user.getProfessionTypes() : java.util.Set.of()),
                 Map.entry("profilePicture", safe(user.getProfilePicture())),
                 Map.entry("reputationScore", reputationScore),
                 Map.entry("totalRatings", totalRatings),
@@ -176,20 +177,30 @@ public class AuthController {
     // ========== REGISTRO ==========
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<?> register(@RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
         if (!rateLimiter.tryConsumeRegister(getClientIp(httpRequest)))
             return ResponseEntity.status(429).body(Map.of("error", "Demasiados intentos. Esperá unos minutos."));
 
-        String email = request.get("email");
-        String password = request.get("password");
-        String name = request.get("name");
-        String location = request.get("location");
-        String professionType = request.get("professionType");
-        String professionalTitle = request.get("professionalTitle");
+        String email = (String) request.get("email");
+        String password = (String) request.get("password");
+        String name = (String) request.get("name");
+        String location = (String) request.get("location");
+        String professionalTitle = (String) request.get("professionalTitle");
 
-        if (email == null || password == null || name == null || professionType == null || professionType.isEmpty()) {
+        // Aceptar lista o campo simple
+        java.util.List<String> professionTypes = null;
+        Object ptRaw = request.get("professionTypes");
+        if (ptRaw instanceof java.util.List) {
+            professionTypes = (java.util.List<String>) ptRaw;
+        } else {
+            String single = (String) request.get("professionType");
+            if (single != null && !single.isEmpty()) professionTypes = java.util.List.of(single);
+        }
+
+        if (email == null || password == null || name == null || professionTypes == null || professionTypes.isEmpty()) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Email, password, nombre y tipo de profesión son requeridos"));
+                    .body(Map.of("error", "Email, password, nombre y al menos una profesión son requeridos"));
         }
 
         String passwordError = validatePassword(password);
@@ -204,7 +215,9 @@ public class AuthController {
                 .name(name).email(email)
                 .password(passwordEncoder.encode(password))
                 .activeRole(UserRole.PROFESSIONAL)
-                .location(location).professionType(professionType)
+                .location(location)
+                .professionType(professionTypes.get(0))
+                .professionTypes(new java.util.HashSet<>(professionTypes))
                 .professionalTitle(professionalTitle)
                 .reputationScore(0.0).totalRatings(0).searchable(true)
                 .termsAccepted(true).termsAcceptedAt(LocalDateTime.now())
@@ -225,6 +238,7 @@ public class AuthController {
                 "email", professional.getEmail(),
                 "name", professional.getName(),
                 "professionType", professional.getProfessionType() != null ? professional.getProfessionType() : "",
+                "professionTypes", professional.getProfessionTypes(),
                 "professionalTitle", professional.getProfessionalTitle() != null ? professional.getProfessionalTitle() : "",
                 "reputationScore", 0.0,
                 "totalRatings", 0
@@ -476,8 +490,9 @@ public class AuthController {
 
     // ========== ACTUALIZAR PERFIL ==========
 
+    @SuppressWarnings("unchecked")
     @PutMapping("/update-profile")
-    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> updates,
+    public ResponseEntity<?> updateProfile(@RequestBody Map<String, Object> updates,
                                            HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         String userType = (String) request.getAttribute("userType");
@@ -493,15 +508,27 @@ public class AuthController {
 
         AppUser user = userOpt.get();
 
-        if (updates.containsKey("phone")) user.setPhone(updates.get("phone"));
-        if (updates.containsKey("location")) user.setLocation(updates.get("location"));
+        if (updates.containsKey("phone")) user.setPhone((String) updates.get("phone"));
+        if (updates.containsKey("location")) user.setLocation((String) updates.get("location"));
 
         if ("PROFESSIONAL".equals(userType)) {
             if (updates.containsKey("professionalTitle")) {
-                user.setProfessionalTitle(updates.get("professionalTitle"));
+                user.setProfessionalTitle((String) updates.get("professionalTitle"));
             }
-            if (updates.containsKey("professionType")) {
-                user.setProfessionType(updates.get("professionType"));
+            if (updates.containsKey("professionTypes")) {
+                java.util.List<String> types = (java.util.List<String>) updates.get("professionTypes");
+                if (types != null && !types.isEmpty()) {
+                    user.getProfessionTypes().clear();
+                    user.getProfessionTypes().addAll(types);
+                    user.setProfessionType(types.get(0));
+                }
+            } else if (updates.containsKey("professionType")) {
+                String single = (String) updates.get("professionType");
+                if (single != null && !single.isEmpty()) {
+                    user.setProfessionType(single);
+                    user.getProfessionTypes().clear();
+                    user.getProfessionTypes().add(single);
+                }
             }
         }
 

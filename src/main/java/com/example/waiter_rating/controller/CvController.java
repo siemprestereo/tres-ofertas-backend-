@@ -834,6 +834,8 @@ public class CvController {
         dto.setProfessionalId(p.getId());
         dto.setPublicSlug(cv.getPublicSlug());
         dto.setProfessionalName(p.getName());
+        dto.setProfessionTypes(p.getProfessionTypes() != null
+                ? new java.util.ArrayList<>(p.getProfessionTypes()) : java.util.List.of());
         dto.setProfessionalEmail(p.getEmail());
         dto.setProfessionalPhone(p.getPhone());
         dto.setProfessionalLocation(p.getLocation());

@@ -9,6 +9,7 @@ public class CvPublicResponse {
     private Long professionalId;
     private String publicSlug;
     private String professionalName;
+    private java.util.List<String> professionTypes;
     private String professionalEmail;
     private String professionalPhone;
     private String professionalLocation;

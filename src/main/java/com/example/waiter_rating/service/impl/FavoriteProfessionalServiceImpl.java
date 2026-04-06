@@ -146,11 +146,14 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
 
         String publicSlug = cvRepo.findByProfessionalId(prof.getId())
                 .map(cv -> cv.getPublicSlug()).orElse(null);
+        java.util.List<String> professionTypes = prof.getProfessionTypes() != null
+                ? new java.util.ArrayList<>(prof.getProfessionTypes()) : java.util.List.of();
 
         return FavoriteProfessionalResponse.builder()
                 .favoriteId(favorite.getId())
                 .professionalId(prof.getId())
                 .publicSlug(publicSlug)
+                .professionTypes(professionTypes)
                 .professionalName(prof.getName())
                 .professionalEmail(prof.getEmail())
                 .professionType(prof.getProfessionType())
@@ -185,11 +188,14 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
 
         String publicSlug = cvRepo.findByProfessionalId(prof.getId())
                 .map(cv -> cv.getPublicSlug()).orElse(null);
+        java.util.List<String> professionTypes2 = prof.getProfessionTypes() != null
+                ? new java.util.ArrayList<>(prof.getProfessionTypes()) : java.util.List.of();
 
         return FavoriteProfessionalResponse.builder()
                 .favoriteId(favorite.getId())
                 .professionalId(prof.getId())
                 .publicSlug(publicSlug)
+                .professionTypes(professionTypes2)
                 .professionalName(prof.getName())
                 .professionalEmail(prof.getEmail())
                 .professionType(prof.getProfessionType())

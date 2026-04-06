@@ -39,7 +39,7 @@ public class RoleSwitchController {
         AppUser updatedUser = roleSwitchService.switchRole(
                 currentUser.getId(),
                 request.getNewRole(),
-                request.getProfessionType(),
+                request.getEffectiveProfessionTypes(),
                 request.getProfessionalTitle()
         );
 

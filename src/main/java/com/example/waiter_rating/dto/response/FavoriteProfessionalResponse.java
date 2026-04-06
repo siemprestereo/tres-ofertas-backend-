@@ -14,6 +14,7 @@ public class FavoriteProfessionalResponse {
     private Long favoriteId;
     private Long professionalId;
     private String publicSlug;
+    private java.util.List<String> professionTypes;
     private String professionalName;
     private String professionalEmail;
     private String professionType;

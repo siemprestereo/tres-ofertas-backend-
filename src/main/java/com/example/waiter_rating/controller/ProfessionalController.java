@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -299,6 +300,7 @@ public class ProfessionalController {
         response.put("publicSlug", publicSlug);
         response.put("name", p.getName() != null ? p.getName() : "");
         response.put("professionType", p.getProfessionType() != null ? p.getProfessionType() : "");
+        response.put("professionTypes", p.getProfessionTypes() != null ? p.getProfessionTypes() : Set.of());
         response.put("location", p.getLocation() != null ? p.getLocation() : "");
         response.put("reputationScore", p.getReputationScore() != null ? p.getReputationScore() : 0.0);
         response.put("totalRatings", p.getTotalRatings() != null ? p.getTotalRatings() : 0);

@@ -9,6 +9,7 @@ public class ProfessionalResponse {
     private Long id;
     private String publicSlug;
     private String name;
+    private java.util.List<String> professionTypes;
     private String email;
     private String phone;
     private String profilePicture;
