@@ -39,6 +39,9 @@ public class AppUser {
     @Column(length = 100)
     private String location;
 
+    @Column(name = "birth_date")
+    private java.time.LocalDate birthDate;
+
     @Column(length = 255)
     private String password;
 

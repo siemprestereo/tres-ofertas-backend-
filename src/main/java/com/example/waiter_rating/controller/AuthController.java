@@ -86,15 +86,16 @@ public class AuthController {
     }
 
     private Map<String, Object> buildClientResponse(AppUser user) {
-        return Map.of(
-                "id", user.getId(),
-                "email", safe(user.getEmail()),
-                "name", safe(user.getName()),
-                "phone", safe(user.getPhone()),
-                "location", safe(user.getLocation()),
-                "profilePicture", safe(user.getProfilePicture()),
-                "termsAccepted", user.getTermsAccepted() != null && user.getTermsAccepted(),
-                "emailVerified", user.getEmailVerified() != null && user.getEmailVerified()
+        return Map.ofEntries(
+                Map.entry("id", user.getId()),
+                Map.entry("email", safe(user.getEmail())),
+                Map.entry("name", safe(user.getName())),
+                Map.entry("phone", safe(user.getPhone())),
+                Map.entry("location", safe(user.getLocation())),
+                Map.entry("birthDate", user.getBirthDate() != null ? user.getBirthDate().toString() : ""),
+                Map.entry("profilePicture", safe(user.getProfilePicture())),
+                Map.entry("termsAccepted", user.getTermsAccepted() != null && user.getTermsAccepted()),
+                Map.entry("emailVerified", user.getEmailVerified() != null && user.getEmailVerified())
         );
     }
 
@@ -111,6 +112,7 @@ public class AuthController {
                 Map.entry("professionalTitle", safe(user.getProfessionalTitle())),
                 Map.entry("professionType", user.getProfessionType() != null ? user.getProfessionType() : ""),
                 Map.entry("professionTypes", user.getProfessionTypes() != null ? user.getProfessionTypes() : java.util.Set.of()),
+                Map.entry("birthDate", user.getBirthDate() != null ? user.getBirthDate().toString() : ""),
                 Map.entry("profilePicture", safe(user.getProfilePicture())),
                 Map.entry("reputationScore", reputationScore),
                 Map.entry("totalRatings", totalRatings),
@@ -510,6 +512,10 @@ public class AuthController {
 
         if (updates.containsKey("phone")) user.setPhone((String) updates.get("phone"));
         if (updates.containsKey("location")) user.setLocation((String) updates.get("location"));
+        if (updates.containsKey("birthDate")) {
+            String bd = (String) updates.get("birthDate");
+            user.setBirthDate(bd != null && !bd.isEmpty() ? java.time.LocalDate.parse(bd) : null);
+        }
 
         if ("PROFESSIONAL".equals(userType)) {
             if (updates.containsKey("professionalTitle")) {
