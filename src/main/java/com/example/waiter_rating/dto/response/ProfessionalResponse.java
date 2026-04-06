@@ -2,6 +2,7 @@ package com.example.waiter_rating.dto.response;
 
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -19,6 +20,7 @@ public class ProfessionalResponse {
     private LocalDateTime createdAt;
     private String location;
     private String professionalTitle;
+    private LocalDate birthDate;
 
     // Datos de reputación
     private Double averageRating;

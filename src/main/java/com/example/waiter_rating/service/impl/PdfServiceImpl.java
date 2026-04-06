@@ -116,6 +116,7 @@ public class PdfServiceImpl implements PdfService {
         addContactItem(leftColumn, "Email", professional.getEmail(), regularFont);
         if (professional.getPhone() != null) addContactItem(leftColumn, "Teléfono", professional.getPhone(), regularFont);
         if (professional.getLocation() != null) addContactItem(leftColumn, "Ubicación", professional.getLocation(), regularFont);
+        if (professional.getBirthDate() != null) addContactItem(leftColumn, "Fecha de nac.", professional.getBirthDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), regularFont);
 
         leftColumn.add(new Paragraph("\n").setMarginBottom(15));
         addReputationBadge(leftColumn, professional, boldFont, regularFont);
@@ -209,6 +210,7 @@ public class PdfServiceImpl implements PdfService {
         contact.append(professional.getEmail());
         if (professional.getPhone() != null) contact.append("  |  ").append(professional.getPhone());
         if (professional.getLocation() != null) contact.append("  |  ").append(professional.getLocation());
+        if (professional.getBirthDate() != null) contact.append("  |  ").append(professional.getBirthDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
         document.add(new Paragraph(contact.toString())
                 .setFont(regularFont).setFontSize(9).setFontColor(SECONDARY_COLOR).setMarginBottom(4));
 
@@ -365,6 +367,7 @@ public class PdfServiceImpl implements PdfService {
         StringBuilder contact = new StringBuilder(professional.getEmail());
         if (professional.getPhone() != null) contact.append("   |   ").append(professional.getPhone());
         if (professional.getLocation() != null) contact.append("   |   ").append(professional.getLocation());
+        if (professional.getBirthDate() != null) contact.append("   |   ").append(professional.getBirthDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
         nameCell.add(new Paragraph(contact.toString())
                 .setFont(regularFont).setFontSize(9).setFontColor(new DeviceRgb(148, 163, 184)).setMarginBottom(10));
 
