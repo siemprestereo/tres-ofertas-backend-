@@ -1,13 +1,9 @@
 package com.tresofertas.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
 
 @Entity
 @Table(name = "banned_words")
-@Getter
-@Setter
 public class BannedWord {
 
     @Id
@@ -16,4 +12,8 @@ public class BannedWord {
 
     @Column(nullable = false, unique = true, length = 100)
     private String word;
+
+    public Long getId() { return id; }
+    public String getWord() { return word; }
+    public void setWord(String word) { this.word = word; }
 }

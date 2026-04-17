@@ -1,15 +1,10 @@
 package com.tresofertas.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "password_reset_tokens")
-@Getter
-@Setter
 public class PasswordResetToken {
 
     @Id
@@ -28,4 +23,14 @@ public class PasswordResetToken {
 
     @Column(nullable = false)
     private Boolean used = false;
+
+    public Long getId() { return id; }
+    public AppUser getUser() { return user; }
+    public void setUser(AppUser user) { this.user = user; }
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
+    public LocalDateTime getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
+    public Boolean getUsed() { return used; }
+    public void setUsed(Boolean used) { this.used = used; }
 }

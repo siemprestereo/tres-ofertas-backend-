@@ -1,15 +1,10 @@
 package com.tresofertas.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "category_suggestions")
-@Getter
-@Setter
 public class CategorySuggestion {
 
     @Id
@@ -30,4 +25,15 @@ public class CategorySuggestion {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public Long getId() { return id; }
+    public AppUser getSuggestedBy() { return suggestedBy; }
+    public void setSuggestedBy(AppUser suggestedBy) { this.suggestedBy = suggestedBy; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public Boolean getReviewed() { return reviewed; }
+    public void setReviewed(Boolean reviewed) { this.reviewed = reviewed; }
+    public Boolean getApproved() { return approved; }
+    public void setApproved(Boolean approved) { this.approved = approved; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }

@@ -1,15 +1,10 @@
 package com.tresofertas.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "suspensions")
-@Getter
-@Setter
 public class Suspension {
 
     @Id
@@ -31,4 +26,15 @@ public class Suspension {
 
     @Column(nullable = false)
     private Boolean permanent = false;
+
+    public Long getId() { return id; }
+    public Merchant getMerchant() { return merchant; }
+    public void setMerchant(Merchant merchant) { this.merchant = merchant; }
+    public String getReason() { return reason; }
+    public void setReason(String reason) { this.reason = reason; }
+    public LocalDateTime getSuspendedAt() { return suspendedAt; }
+    public LocalDateTime getLiftedAt() { return liftedAt; }
+    public void setLiftedAt(LocalDateTime liftedAt) { this.liftedAt = liftedAt; }
+    public Boolean getPermanent() { return permanent; }
+    public void setPermanent(Boolean permanent) { this.permanent = permanent; }
 }

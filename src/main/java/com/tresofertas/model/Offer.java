@@ -1,16 +1,11 @@
 package com.tresofertas.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "offers")
-@Getter
-@Setter
 public class Offer {
 
     @Id
@@ -44,4 +39,23 @@ public class Offer {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public Long getId() { return id; }
+    public Merchant getMerchant() { return merchant; }
+    public void setMerchant(Merchant merchant) { this.merchant = merchant; }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
+    public String getPhotoUrl() { return photoUrl; }
+    public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
+    public Boolean getUntilStockOut() { return untilStockOut; }
+    public void setUntilStockOut(Boolean untilStockOut) { this.untilStockOut = untilStockOut; }
+    public LocalDateTime getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
+    public Boolean getActive() { return active; }
+    public void setActive(Boolean active) { this.active = active; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }

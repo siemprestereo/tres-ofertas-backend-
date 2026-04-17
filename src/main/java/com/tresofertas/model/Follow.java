@@ -1,15 +1,10 @@
 package com.tresofertas.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "follows")
-@Getter
-@Setter
 public class Follow {
 
     @Id
@@ -26,4 +21,11 @@ public class Follow {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public Long getId() { return id; }
+    public AppUser getConsumer() { return consumer; }
+    public void setConsumer(AppUser consumer) { this.consumer = consumer; }
+    public Merchant getMerchant() { return merchant; }
+    public void setMerchant(Merchant merchant) { this.merchant = merchant; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }
