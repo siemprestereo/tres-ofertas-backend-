@@ -39,4 +39,16 @@ public class OfferController {
         Long userId = (Long) httpRequest.getAttribute("userId");
         return ResponseEntity.ok(offerService.deactivate(offerId, userId));
     }
+
+    @GetMapping
+    public ResponseEntity<List<OfferResponse>> getPublicFeed(
+            @RequestParam(required = false) String category) {
+        return ResponseEntity.ok(offerService.getPublicFeed(category));
+    }
+
+    @GetMapping("/feed")
+    public ResponseEntity<List<OfferResponse>> getPersonalizedFeed(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        return ResponseEntity.ok(offerService.getPersonalizedFeed(userId));
+    }
 }

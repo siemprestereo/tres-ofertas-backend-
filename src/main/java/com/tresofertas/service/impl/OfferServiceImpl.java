@@ -9,6 +9,7 @@ import com.tresofertas.repository.OfferRepo;
 import com.tresofertas.service.OfferService;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -74,6 +75,20 @@ public class OfferServiceImpl implements OfferService {
 
         offer.setActive(false);
         return OfferResponse.from(offerRepo.save(offer));
+    }
+
+    @Override
+    public List<OfferResponse> getPublicFeed(String category) {
+        return offerRepo.findPublicFeed(LocalDateTime.now(), category).stream()
+                .map(OfferResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OfferResponse> getPersonalizedFeed(Long userId) {
+        return offerRepo.findPersonalizedFeed(LocalDateTime.now(), userId).stream()
+                .map(OfferResponse::from)
+                .collect(Collectors.toList());
     }
 
     private String generateCode() {

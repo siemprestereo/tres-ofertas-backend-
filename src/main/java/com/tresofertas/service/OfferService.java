@@ -9,4 +9,6 @@ public interface OfferService {
     OfferResponse create(Long merchantId, CreateOfferRequest request, Long userId);
     List<OfferResponse> getByMerchant(Long merchantId);
     OfferResponse deactivate(Long offerId, Long userId);
+    List<OfferResponse> getPublicFeed(String category);
+    List<OfferResponse> getPersonalizedFeed(Long userId);
 }
